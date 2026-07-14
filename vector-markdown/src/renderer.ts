@@ -2,6 +2,7 @@ import MarkdownIt from "markdown-it";
 import * as path from "path";
 import * as vscode from "vscode";
 import { installAdmonitions } from "./admonitions";
+import { sanitizeRenderedHtml } from "./htmlSanitizer";
 import { inlineRelativeImages } from "./imageInliner";
 import { ThemeManager } from "./themeManager";
 
@@ -26,7 +27,7 @@ export function renderDocument(
 ): RenderResult {
   const renderedHtml = md.render(markdownText);
   const baseDir = sourceDocumentUri ? path.dirname(sourceDocumentUri.fsPath) : process.cwd();
-  const bodyHtml = inlineRelativeImages(renderedHtml, baseDir);
+  const bodyHtml = sanitizeRenderedHtml(inlineRelativeImages(renderedHtml, baseDir));
   const theme = themeManager.resolveActiveTheme(sourceDocumentUri);
   const branding = themeManager.getBranding(sourceDocumentUri);
   const brandTokenCss = themeManager.getBrandTokenOverrideCss(sourceDocumentUri);

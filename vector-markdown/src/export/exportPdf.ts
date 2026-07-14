@@ -18,8 +18,11 @@ export async function exportPdf(document: vscode.TextDocument, themeManager: The
   const chromeLauncher = await import("chrome-launcher");
   const puppeteer = await import("puppeteer-core");
 
+  // No --no-sandbox: rendered HTML is sanitized (src/htmlSanitizer.ts), but
+  // the OS sandbox stays on as defense-in-depth for this real Chrome page
+  // (unlike the webview preview, which sets enableScripts: false directly).
   const chrome = await chromeLauncher.launch({
-    chromeFlags: ["--headless=new", "--disable-gpu", "--no-sandbox"],
+    chromeFlags: ["--headless=new", "--disable-gpu"],
   });
 
   try {

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="media/splash.png" alt="Vector Markdown" width="640" />
+  <img src="media/splash.jpg" alt="Vector Markdown" width="640" />
 </p>
 
 # Vector Markdown
@@ -46,10 +46,16 @@ See **[USAGE.md](USAGE.md)** for detailed setup, commands, and configuration ref
 4. Run **Vector Markdown: Select Preview Theme** to switch themes.
 5. Right-click the file (in the editor or Explorer) → **Vector Markdown: Export** → pick PDF, HTML, or DOCX.
 
-## Before publishing to a Marketplace
+## Acknowledgments
 
-1. Replace `media/icon.png` with real Vector brand artwork (currently a generated placeholder mark).
-2. Set a real `publisher` id in `package.json` (currently `"vector"` as a placeholder) matching your Marketplace publisher account.
+<sub>
+Built on <a href="https://github.com/markdown-it/markdown-it">markdown-it</a>,
+<a href="https://github.com/apostrophecms/sanitize-html">sanitize-html</a>,
+<a href="https://github.com/privateOmega/html-to-docx">html-to-docx</a>, and
+<a href="https://pptr.dev">puppeteer-core</a> /
+<a href="https://github.com/GoogleChrome/chrome-launcher">chrome-launcher</a>.
+DOCX export prefers <a href="https://pandoc.org">Pandoc</a> when it's installed.
+</sub>
 
 ## License
 

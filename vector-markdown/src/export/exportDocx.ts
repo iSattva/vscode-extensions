@@ -36,9 +36,13 @@ export async function exportDocx(document: vscode.TextDocument, themeManager: Th
 
 function runPandoc(sourcePath: string, outPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn("pandoc", [sourcePath, "-f", "gfm", "-t", "docx", "-o", outPath], {
-      shell: process.platform === "win32",
-    });
+    // No shell: true here - sourcePath/outPath come from the open document's
+    // filename and export folder setting, and Node does not safely escape
+    // array arguments against cmd.exe when shell: true is used on Windows,
+    // which would let a crafted filename (e.g. containing "&") inject
+    // arbitrary commands. Plain argv spawning passes args directly to the
+    // process with no shell parsing.
+    const proc = spawn("pandoc", [sourcePath, "-f", "gfm", "-t", "docx", "-o", outPath]);
 
     let stderr = "";
     proc.stderr?.on("data", (chunk) => {

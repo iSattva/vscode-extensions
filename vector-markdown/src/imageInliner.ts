@@ -38,7 +38,15 @@ export function inlineRelativeImages(html: string, baseDir: string): string {
       return match;
     }
 
-    const resolved = path.isAbsolute(decodedSrc) ? decodedSrc : path.resolve(baseDir, decodedSrc);
+    const resolved = path.isAbsolute(decodedSrc) ? path.normalize(decodedSrc) : path.resolve(baseDir, decodedSrc);
+    const baseDirWithSep = baseDir.endsWith(path.sep) ? baseDir : baseDir + path.sep;
+    if (!resolved.startsWith(baseDirWithSep)) {
+      // Refuses to read anything outside the document's own directory tree -
+      // otherwise a crafted src (e.g. "../../.ssh/id_rsa" or an absolute
+      // path) in an untrusted .md file would let preview/export read and
+      // embed arbitrary local files as base64.
+      return match;
+    }
     if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
       return match;
     }
