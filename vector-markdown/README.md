@@ -19,8 +19,11 @@ Markdown is the default authoring format for engineering docs, but sharing those
 ## Features
 
 - 4 built-in preview themes: `default`, `corporate-light`, `corporate-dark`, `minimal`.
-- Custom theme support via any CSS file.
+- **Brand color/font tokens** — set primary/secondary/tertiary color and font family as plain settings, no CSS required, and they override whichever built-in theme is active.
+- Custom theme support via any CSS file, for teams that need full control.
 - Company logo + name injected into the corporate themes' header/footer.
+- **GitHub-style admonitions** (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`), colored per severity using the active brand tokens.
+- **Native VS Code preview support** — `Ctrl+Shift+V` also gets Vector Markdown's admonition rendering and theme-kind-aware styling, no extra command needed.
 - Export to PDF (via a local Chrome/Edge install — no bundled browser), HTML, and DOCX.
 - DOCX export prefers [Pandoc](https://pandoc.org) when installed (best fidelity), and **automatically falls back to a pure-JS converter** with zero extra installs when Pandoc isn't found.
 - Context menu entries on `.md` files in both the editor and the Explorer.

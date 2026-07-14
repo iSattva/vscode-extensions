@@ -1,8 +1,11 @@
 import MarkdownIt from "markdown-it";
+import * as path from "path";
 import * as vscode from "vscode";
+import { installAdmonitions } from "./admonitions";
+import { inlineRelativeImages } from "./imageInliner";
 import { ThemeManager } from "./themeManager";
 
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
+const md = installAdmonitions(new MarkdownIt({ html: true, linkify: true, typographer: true }));
 
 export interface RenderResult {
   bodyHtml: string;
@@ -21,9 +24,12 @@ export function renderDocument(
   sourceDocumentUri: vscode.Uri | undefined,
   title: string
 ): RenderResult {
-  const bodyHtml = md.render(markdownText);
+  const renderedHtml = md.render(markdownText);
+  const baseDir = sourceDocumentUri ? path.dirname(sourceDocumentUri.fsPath) : process.cwd();
+  const bodyHtml = inlineRelativeImages(renderedHtml, baseDir);
   const theme = themeManager.resolveActiveTheme(sourceDocumentUri);
   const branding = themeManager.getBranding(sourceDocumentUri);
+  const brandTokenCss = themeManager.getBrandTokenOverrideCss(sourceDocumentUri);
 
   const header =
     theme.name === "corporate-light" || theme.name === "corporate-dark"
@@ -45,6 +51,7 @@ export function renderDocument(
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${escapeHtml(title)}</title>
 <style>${theme.css}</style>
+${brandTokenCss ? `<style>${brandTokenCss}</style>` : ""}
 </head>
 <body class="vector-markdown">
 ${header}

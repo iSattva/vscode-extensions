@@ -24,7 +24,7 @@ export class PreviewPanel {
     }
 
     const panel = vscode.window.createWebviewPanel(
-      "vectorMarkdownPreview",
+      "vector.markdown.previewPanel",
       "Vector Markdown Preview",
       vscode.ViewColumn.Beside,
       { enableScripts: false, retainContextWhenHidden: true }

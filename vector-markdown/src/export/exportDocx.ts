@@ -20,7 +20,7 @@ export interface DocxExportResult {
  */
 export async function exportDocx(document: vscode.TextDocument, themeManager: ThemeManager): Promise<DocxExportResult> {
   const preferPandoc = vscode.workspace
-    .getConfiguration("vectorMarkdown")
+    .getConfiguration("vector.markdown")
     .get<boolean>("export.docx.preferPandoc", true);
 
   const outPath = resolveOutputPath(document, "docx");

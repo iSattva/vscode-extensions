@@ -12,7 +12,7 @@ export async function exportPdf(document: vscode.TextDocument, themeManager: The
   const { fullHtml } = renderDocument(document.getText(), themeManager, document.uri, document.fileName);
   const outPath = resolveOutputPath(document, "pdf");
   const paperFormat = vscode.workspace
-    .getConfiguration("vectorMarkdown")
+    .getConfiguration("vector.markdown")
     .get<string>("export.pdf.paperFormat", "A4");
 
   const chromeLauncher = await import("chrome-launcher");

@@ -2,8 +2,13 @@
 src/**
 out/**
 node_modules/**
+scripts/**
 .gitignore
 tsconfig.json
 **/*.map
 media/icon-source.svg
 media/splash.svg
+feedback/**
+*.html
+*.pdf
+*.docx

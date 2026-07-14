@@ -1,0 +1,83 @@
+/*
+ * Vector Markdown branding for VS Code's built-in Markdown preview
+ * (Ctrl+Shift+V / Ctrl+K V). Unlike our webview themes, this can't read
+ * vectorMarkdown.theme or brand-token settings (VS Code applies
+ * contributed preview styles statically), so it keys off the
+ * vscode-light / vscode-dark / vscode-high-contrast classes VS Code
+ * already puts on <body>, tracking the user's actual color theme kind.
+ *
+ * VS Code 1.90+ natively parses GitHub-style admonitions
+ * (> [!NOTE] etc.) into .markdown-alert / .markdown-alert-note / ...
+ * elements itself - this only styles those existing classes, it does
+ * not (and must not) re-parse them.
+ */
+
+body.vscode-light {
+  --vm-color-primary: #0d3d3a;
+  --vm-color-secondary: #2aada0;
+  --vm-color-accent: #c9a96e;
+}
+
+body.vscode-dark {
+  --vm-color-primary: #7dd4cc;
+  --vm-color-secondary: #3dbdb0;
+  --vm-color-accent: #c9a96e;
+}
+
+body.vscode-high-contrast {
+  --vm-color-primary: #ffffff;
+  --vm-color-secondary: #3ff2df;
+  --vm-color-accent: #ffd76a;
+}
+
+body.vscode-light h1,
+body.vscode-light h2,
+body.vscode-light h3,
+body.vscode-dark h1,
+body.vscode-dark h2,
+body.vscode-dark h3 {
+  color: var(--vm-color-primary);
+}
+
+body.vscode-light a,
+body.vscode-dark a {
+  color: var(--vm-color-secondary);
+}
+
+/* Signature curve: a single asymmetric bottom-left corner, echoed on
+   blockquotes, code fences, and admonitions as a consistent brand mark. */
+blockquote,
+pre {
+  border-radius: 4px 4px 4px 20px;
+}
+
+.markdown-alert {
+  border-radius: 4px 4px 4px 20px;
+  border-left-width: 4px;
+  border-left-style: solid;
+  padding: 10px 16px;
+}
+
+.markdown-alert-title {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.markdown-alert-note { border-left-color: #0969da; }
+.markdown-alert-tip { border-left-color: #1a7f37; }
+.markdown-alert-important { border-left-color: #8250df; }
+.markdown-alert-warning { border-left-color: #9a6700; }
+.markdown-alert-caution { border-left-color: #cf222e; }
+
+body.vscode-dark .markdown-alert-note { border-left-color: #4d8dff; }
+body.vscode-dark .markdown-alert-tip { border-left-color: #3fb950; }
+body.vscode-dark .markdown-alert-important { border-left-color: #bc8cff; }
+body.vscode-dark .markdown-alert-warning { border-left-color: #d29922; }
+body.vscode-dark .markdown-alert-caution { border-left-color: #f85149; }
+
+body.vscode-high-contrast .markdown-alert {
+  border: 2px solid var(--vm-color-accent);
+  border-radius: 0;
+}

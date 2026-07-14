@@ -33,12 +33,12 @@ PDF export uses whatever Chrome or Edge is already installed on your machine (fo
    - `corporate-dark` — dark theme with a branded header/footer band.
    - `minimal` — distraction-free serif typography, no chrome.
    - `custom` — prompts you to pick a CSS file (see below).
-3. The setting is written to `.vscode/settings.json` under `vectorMarkdown.theme` (Workspace scope), so it's shared with your team when committed.
+3. The setting is written to `.vscode/settings.json` under `vector.markdown.theme` (Workspace scope), so it's shared with your team when committed.
 
 ### Using your own CSS theme
 
 1. Command Palette → **Vector Markdown: Configure Custom Theme...**.
-2. Select any `.css` file. This sets `vectorMarkdown.theme` to `custom` and `vectorMarkdown.customThemePath` to the file you picked.
+2. Select any `.css` file. This sets `vector.markdown.theme` to `custom` and `vector.markdown.customThemePath` to the file you picked.
 3. Your CSS controls the full page — target `.vector-markdown` (body), `.vector-header`, `.vector-body`, and `.vector-footer` to match the built-in theme structure, or write fully custom rules.
 4. Edit the CSS file and save — the preview refreshes automatically.
 
@@ -48,13 +48,64 @@ Set these in Settings (`Ctrl+,`) or `settings.json`, under the corporate themes:
 
 ```json
 {
-  "vectorMarkdown.theme": "corporate-light",
-  "vectorMarkdown.branding.companyName": "Acme Corp",
-  "vectorMarkdown.branding.logoPath": "assets/acme-logo.png"
+  "vector.markdown.theme": "corporate-light",
+  "vector.markdown.branding.companyName": "Acme Corp",
+  "vector.markdown.branding.logoPath": "assets/acme-logo.png"
 }
 ```
 
 `logoPath` accepts an absolute path or a path relative to your workspace root. The logo appears in the header band on `corporate-light` / `corporate-dark` themes.
+
+### Setting brand colors and font without writing CSS
+
+For teams that just need "our primary/secondary/tertiary color and font," you don't need the `custom` CSS theme — set brand tokens directly and they override the active built-in theme's defaults:
+
+```json
+{
+  "vector.markdown.branding.colors.primary": "#7A1F3D",
+  "vector.markdown.branding.colors.secondary": "#C9A227",
+  "vector.markdown.branding.colors.tertiary": "#5B5B5B",
+  "vector.markdown.branding.fontFamily": "Georgia, serif",
+  "vector.markdown.branding.admonitionColors.note": "#7A1F3D",
+  "vector.markdown.branding.admonitionColors.warning": "#E65100"
+}
+```
+
+- `primary` drives headings and the header band background.
+- `secondary` drives links, accents, and blockquote borders.
+- `tertiary` drives muted text (footer, default admonition border).
+- `admonitionColors.*` control the five admonition severities individually (see below); unset ones keep the active theme's default.
+- Any token left empty (`""`, the default) falls back to whatever the active theme already defines — you only need to set the ones you want to change.
+- These tokens apply to the **Vector Markdown webview preview and all exports** (PDF/HTML/DOCX share the same render pipeline). VS Code's built-in preview (`Ctrl+Shift+V`) does not read these settings — see [native preview support](#native-vs-code-preview-support) below for why.
+
+### Admonitions (callouts)
+
+GitHub-style admonition syntax is supported directly:
+
+```markdown
+> [!NOTE]
+> Informational callout.
+
+> [!TIP]
+> Helpful suggestion.
+
+> [!IMPORTANT]
+> Key requirement.
+
+> [!WARNING]
+> Caution advised.
+
+> [!CAUTION]
+> Action may have negative consequences.
+```
+
+Each renders as a colored callout block, using that severity's admonition color (theme default, or your `branding.admonitionColors.*` override). Works in both the Vector Markdown webview preview and VS Code's built-in preview.
+
+### Native VS Code preview support
+
+Besides our own webview (**Vector Markdown: Open Branded Preview**), Vector Markdown also contributes styling and admonition parsing to VS Code's **built-in** Markdown preview (`Ctrl+Shift+V` / `Ctrl+K V`) — no extra command needed, it applies automatically to any `.md` file.
+
+The built-in preview is styled per VS Code's actual color theme kind (light / dark / high contrast), matching whichever one you're using, rather than our `vector.markdown.theme` setting — VS Code only lets extensions contribute *static* preview CSS, not settings-driven CSS, so it can't pick up your custom brand token overrides or the `custom` CSS theme. Use the Vector Markdown webview preview (and it for exports) when you need full brand-token control or the logo/company-name header band.
 
 ## 4. Exporting
 
@@ -77,7 +128,7 @@ By default, exported files are written next to the source `.md` file. To central
 
 ```json
 {
-  "vectorMarkdown.export.outputFolder": "exports"
+  "vector.markdown.export.outputFolder": "exports"
 }
 ```
 
@@ -87,7 +138,7 @@ Relative paths are resolved against the workspace root; absolute paths are used 
 
 ```json
 {
-  "vectorMarkdown.export.docx.preferPandoc": true
+  "vector.markdown.export.docx.preferPandoc": true
 }
 ```
 
@@ -97,7 +148,7 @@ Set to `false` to always use the built-in JS converter, even if Pandoc is instal
 
 ```json
 {
-  "vectorMarkdown.export.pdf.paperFormat": "A4"
+  "vector.markdown.export.pdf.paperFormat": "A4"
 }
 ```
 
@@ -107,31 +158,40 @@ Accepts `A4`, `Letter`, or `Legal`.
 
 | Command ID | Title | Where |
 | --- | --- | --- |
-| `vectorMarkdown.openPreview` | Vector Markdown: Open Branded Preview | Command Palette, editor title bar |
-| `vectorMarkdown.selectTheme` | Vector Markdown: Select Preview Theme | Command Palette |
-| `vectorMarkdown.configureCustomTheme` | Vector Markdown: Configure Custom Theme... | Command Palette |
-| `vectorMarkdown.exportPdf` | Vector Markdown: Export as PDF | Command Palette, editor/Explorer context menu |
-| `vectorMarkdown.exportHtml` | Vector Markdown: Export as HTML | Command Palette, editor/Explorer context menu |
-| `vectorMarkdown.exportDocx` | Vector Markdown: Export as DOCX | Command Palette, editor/Explorer context menu |
-| `vectorMarkdown.exportAll` | Vector Markdown: Export as PDF, HTML & DOCX | Command Palette, editor/Explorer context menu |
+| `vector.markdown.openPreview` | Vector Markdown: Open Branded Preview | Command Palette, editor title bar |
+| `vector.markdown.selectTheme` | Vector Markdown: Select Preview Theme | Command Palette |
+| `vector.markdown.configureCustomTheme` | Vector Markdown: Configure Custom Theme... | Command Palette |
+| `vector.markdown.exportPdf` | Vector Markdown: Export as PDF | Command Palette, editor/Explorer context menu |
+| `vector.markdown.exportHtml` | Vector Markdown: Export as HTML | Command Palette, editor/Explorer context menu |
+| `vector.markdown.exportDocx` | Vector Markdown: Export as DOCX | Command Palette, editor/Explorer context menu |
+| `vector.markdown.exportAll` | Vector Markdown: Export as PDF, HTML & DOCX | Command Palette, editor/Explorer context menu |
 
 ## 6. Full settings reference
 
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
-| `vectorMarkdown.theme` | enum | `default` | Active preview/export theme |
-| `vectorMarkdown.customThemePath` | string | `""` | Path to custom CSS, used when theme is `custom` |
-| `vectorMarkdown.branding.companyName` | string | `""` | Shown in corporate theme header/footer |
-| `vectorMarkdown.branding.logoPath` | string | `""` | Logo shown in corporate theme header |
-| `vectorMarkdown.export.outputFolder` | string | `""` | Export destination folder |
-| `vectorMarkdown.export.docx.preferPandoc` | boolean | `true` | Prefer Pandoc over the JS fallback for DOCX |
-| `vectorMarkdown.export.pdf.paperFormat` | enum | `A4` | PDF paper size (`A4`, `Letter`, `Legal`) |
+| `vector.markdown.theme` | enum | `default` | Active preview/export theme |
+| `vector.markdown.customThemePath` | string | `""` | Path to custom CSS, used when theme is `custom` |
+| `vector.markdown.branding.companyName` | string | `""` | Shown in corporate theme header/footer |
+| `vector.markdown.branding.logoPath` | string | `""` | Logo shown in corporate theme header |
+| `vector.markdown.branding.colors.primary` | string | `""` | Brand primary color (headings, header band). Overrides theme default |
+| `vector.markdown.branding.colors.secondary` | string | `""` | Brand secondary color (links, accents). Overrides theme default |
+| `vector.markdown.branding.colors.tertiary` | string | `""` | Brand tertiary color (muted text). Overrides theme default |
+| `vector.markdown.branding.fontFamily` | string | `""` | Brand font family (CSS value). Overrides theme default |
+| `vector.markdown.branding.admonitionColors.note` | string | `""` | Color for `[!NOTE]` callouts. Overrides theme default |
+| `vector.markdown.branding.admonitionColors.tip` | string | `""` | Color for `[!TIP]` callouts. Overrides theme default |
+| `vector.markdown.branding.admonitionColors.important` | string | `""` | Color for `[!IMPORTANT]` callouts. Overrides theme default |
+| `vector.markdown.branding.admonitionColors.warning` | string | `""` | Color for `[!WARNING]` callouts. Overrides theme default |
+| `vector.markdown.branding.admonitionColors.caution` | string | `""` | Color for `[!CAUTION]` callouts. Overrides theme default |
+| `vector.markdown.export.outputFolder` | string | `""` | Export destination folder |
+| `vector.markdown.export.docx.preferPandoc` | boolean | `true` | Prefer Pandoc over the JS fallback for DOCX |
+| `vector.markdown.export.pdf.paperFormat` | enum | `A4` | PDF paper size (`A4`, `Letter`, `Legal`) |
 
 ## 7. Troubleshooting
 
 - **"Could not find a local Chrome or Edge install" on PDF export** — install Google Chrome or Microsoft Edge, or set the `CHROME_PATH` environment variable to a Chromium-based browser executable.
 - **DOCX export looks plain / tables lost formatting** — install Pandoc for higher-fidelity output; the JS fallback covers headings, lists, tables, and basic formatting but not advanced styling.
-- **Custom theme not applying** — confirm `vectorMarkdown.theme` is set to `custom` and `vectorMarkdown.customThemePath` points to an existing `.css` file; check the **Vector Markdown** Output channel for errors.
+- **Custom theme not applying** — confirm `vector.markdown.theme` is set to `custom` and `vector.markdown.customThemePath` points to an existing `.css` file; check the **Vector Markdown** Output channel for errors.
 
 ## Developing
 

@@ -3,7 +3,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 export function resolveOutputPath(document: vscode.TextDocument, extension: "html" | "pdf" | "docx"): string {
-  const config = vscode.workspace.getConfiguration("vectorMarkdown");
+  const config = vscode.workspace.getConfiguration("vector.markdown");
   const outputFolder = config.get<string>("export.outputFolder", "").trim();
   const baseName = path.basename(document.fileName, path.extname(document.fileName));
 

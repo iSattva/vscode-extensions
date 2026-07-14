@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0B1E3D"/>
-      <stop offset="100%" stop-color="#122A52"/>
+      <stop offset="0%" stop-color="#0A1F1D"/>
+      <stop offset="100%" stop-color="#103D38"/>
     </linearGradient>
     <linearGradient id="stroke" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#4F8DFF"/>
-      <stop offset="100%" stop-color="#FFFFFF"/>
+      <stop offset="0%" stop-color="#2AADA0"/>
+      <stop offset="100%" stop-color="#C9A96E"/>
     </linearGradient>
   </defs>
 
@@ -15,18 +15,18 @@
   <!-- Vector arrow mark -->
   <g transform="translate(120,140)">
     <line x1="20" y1="300" x2="206" y2="95" stroke="url(#stroke)" stroke-width="34" stroke-linecap="round"/>
-    <polygon points="267,28 242,127 171,63" fill="#FFFFFF"/>
+    <polygon points="267,28 242,127 171,63" fill="#C9A96E"/>
   </g>
 
-  <text x="470" y="270" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#FFFFFF">Vector Markdown</text>
-  <text x="470" y="320" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#9DB4DD">Branded preview themes. One-click PDF, HTML &amp; DOCX export.</text>
+  <text x="470" y="270" font-family="Georgia, 'Playfair Display', serif" font-size="72" font-weight="700" fill="#FFFFFF">Vector Markdown</text>
+  <text x="470" y="320" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#9FC7C1">Branded preview themes. One-click PDF, HTML &amp; DOCX export.</text>
 
-  <g transform="translate(470,380)" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" fill="#C7D5EC">
-    <rect x="0" y="0" width="150" height="34" rx="6" fill="#132C56"/>
+  <g transform="translate(470,380)" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" fill="#D6ECE9">
+    <rect x="0" y="0" width="150" height="34" rx="10" fill="#163330"/>
     <text x="20" y="23">Windows</text>
-    <rect x="166" y="0" width="130" height="34" rx="6" fill="#132C56"/>
+    <rect x="166" y="0" width="130" height="34" rx="10" fill="#163330"/>
     <text x="186" y="23">macOS</text>
-    <rect x="312" y="0" width="130" height="34" rx="6" fill="#132C56"/>
+    <rect x="312" y="0" width="130" height="34" rx="10" fill="#163330"/>
     <text x="332" y="23">Linux</text>
   </g>
 </svg>

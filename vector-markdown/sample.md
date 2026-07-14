@@ -16,6 +16,23 @@ Enterprises want a **consistent, branded reading experience** for internal docs,
 
 > Switch themes any time with **Vector Markdown: Select Preview Theme**.
 
+## Admonitions
+
+> [!NOTE]
+> Informational callout, useful for context that isn't essential.
+
+> [!TIP]
+> Helpful suggestion the reader can act on.
+
+> [!IMPORTANT]
+> Key requirement the reader must know.
+
+> [!WARNING]
+> Caution advised before proceeding.
+
+> [!CAUTION]
+> Action that may have negative consequences.
+
 ```js
 console.log("Code blocks are themed too.");
 ```

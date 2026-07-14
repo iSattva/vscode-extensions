@@ -1,8 +1,24 @@
 /* Vector Markdown - Corporate Light theme: branded header/footer band */
+:root {
+  --vm-color-primary: #0d3d3a;
+  --vm-color-secondary: #2aada0;
+  --vm-color-tertiary: #4a7c78;
+  --vm-color-background: #f7f5f1;
+  --vm-color-accent: #c9a96e;
+  --vm-font-family: Nunito, system-ui, sans-serif;
+  --vm-admonition-note: #0969da;
+  --vm-admonition-tip: #1a7f37;
+  --vm-admonition-important: #8250df;
+  --vm-admonition-warning: #9a6700;
+  --vm-admonition-caution: #cf222e;
+  --vm-curve: 24px;
+  --vm-curve-small: 10px;
+}
+
 body.vector-markdown {
-  font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
-  color: #1a1a1a;
-  background: #ffffff;
+  font-family: var(--vm-font-family);
+  color: #26312f;
+  background: var(--vm-color-background);
   line-height: 1.65;
   margin: 0;
 }
@@ -12,9 +28,9 @@ body.vector-markdown {
   align-items: center;
   gap: 12px;
   padding: 16px 32px;
-  background: #0b1e3d;
+  background: var(--vm-color-primary);
   color: #ffffff;
-  border-bottom: 4px solid #2f6fed;
+  border-bottom: 4px solid var(--vm-color-accent);
 }
 
 .vector-markdown .vector-header img {
@@ -24,7 +40,7 @@ body.vector-markdown {
 
 .vector-markdown .vector-header .vector-company-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
 }
 
@@ -37,55 +53,97 @@ body.vector-markdown {
 .vector-markdown h1,
 .vector-markdown h2,
 .vector-markdown h3 {
-  color: #0b1e3d;
-  font-weight: 600;
-  border-bottom: 1px solid #e5e9f2;
+  color: var(--vm-color-primary);
+  font-weight: 700;
+  border-bottom: 1px solid #e5e0d8;
   padding-bottom: 6px;
 }
 
 .vector-markdown a {
-  color: #2f6fed;
+  color: var(--vm-color-secondary);
 }
 
 .vector-markdown code {
   background: #eef2fb;
   padding: 2px 5px;
-  border-radius: 4px;
+  border-radius: var(--vm-curve-small);
+}
+
+.vector-markdown pre {
+  border-radius: var(--vm-curve-small) var(--vm-curve-small) var(--vm-curve-small) var(--vm-curve);
+  border-left: 4px solid var(--vm-color-secondary);
 }
 
 .vector-markdown pre code {
   display: block;
   padding: 12px;
   overflow-x: auto;
+  background: transparent;
+  border-radius: 0;
 }
 
 .vector-markdown blockquote {
-  border-left: 4px solid #2f6fed;
+  border-left: 4px solid var(--vm-color-accent);
   margin: 0;
   padding: 4px 16px;
-  background: #f6f8fd;
-  color: #3a3a3a;
+  background: #f2eeea;
+  color: #3a4644;
+  border-radius: var(--vm-curve-small) var(--vm-curve-small) var(--vm-curve-small) var(--vm-curve);
 }
 
 .vector-markdown table {
   border-collapse: collapse;
   width: 100%;
+  border-radius: var(--vm-curve-small);
+  overflow: hidden;
 }
 
 .vector-markdown table th {
-  background: #eef2fb;
+  background: var(--vm-color-primary);
+  color: #ffffff;
 }
 
 .vector-markdown table th,
 .vector-markdown table td {
-  border: 1px solid #dbe2f0;
+  border: 1px solid #e5e0d8;
   padding: 6px 10px;
 }
 
 .vector-markdown .vector-footer {
   padding: 12px 32px;
   font-size: 11px;
-  color: #6b7280;
-  border-top: 1px solid #e5e9f2;
+  color: var(--vm-color-tertiary);
+  border-top: 1px solid #e5e0d8;
   text-align: center;
 }
+
+.vector-markdown .vector-admonition {
+  border-left: 4px solid var(--vm-color-tertiary);
+  background: #f2eeea;
+  padding: 10px 16px;
+  margin: 16px 0;
+  border-radius: var(--vm-curve-small) var(--vm-curve-small) var(--vm-curve-small) var(--vm-curve);
+}
+
+.vector-markdown .vector-admonition-label {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.vector-markdown .vector-admonition-note { border-left-color: var(--vm-admonition-note); background: #ddf4ff; }
+.vector-markdown .vector-admonition-note .vector-admonition-label { color: var(--vm-admonition-note); }
+
+.vector-markdown .vector-admonition-tip { border-left-color: var(--vm-admonition-tip); background: #dafbe1; }
+.vector-markdown .vector-admonition-tip .vector-admonition-label { color: var(--vm-admonition-tip); }
+
+.vector-markdown .vector-admonition-important { border-left-color: var(--vm-admonition-important); background: #fbefff; }
+.vector-markdown .vector-admonition-important .vector-admonition-label { color: var(--vm-admonition-important); }
+
+.vector-markdown .vector-admonition-warning { border-left-color: var(--vm-admonition-warning); background: #fff8c5; }
+.vector-markdown .vector-admonition-warning .vector-admonition-label { color: var(--vm-admonition-warning); }
+
+.vector-markdown .vector-admonition-caution { border-left-color: var(--vm-admonition-caution); background: #ffebe9; }
+.vector-markdown .vector-admonition-caution .vector-admonition-label { color: var(--vm-admonition-caution); }
