@@ -1,0 +1,15 @@
+.vscode/**
+src/**
+out/**
+node_modules/**
+scripts/**
+.gitignore
+tsconfig.json
+**/*.map
+feedback/**
+media/icon-source.png
+media/splash.svg
+*.pdf
+*.md
+!README.md
+!CHANGELOG.md

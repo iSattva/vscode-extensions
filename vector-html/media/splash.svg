@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A1F1D"/>
+      <stop offset="100%" stop-color="#103D38"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Icon mark, mirroring media/icon-source.png (kept as the user's chosen raster art, not redrawn). Uses the full-resolution source, not the downsized icon.png, so it doesn't blur at splash size. -->
+  <image href="icon-source.png" x="110" y="130" width="380" height="380"/>
+
+  <text x="530" y="270" font-family="Georgia, 'Playfair Display', serif" font-size="72" font-weight="700" fill="#FFFFFF">Vector HTML</text>
+  <text x="530" y="320" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" fill="#9FC7C1">Sanitized HTML preview. One-click PDF &amp; Markdown export.</text>
+
+  <g transform="translate(530,380)" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" fill="#D6ECE9">
+    <rect x="0" y="0" width="150" height="34" rx="10" fill="#163330"/>
+    <text x="20" y="23">Windows</text>
+    <rect x="166" y="0" width="130" height="34" rx="10" fill="#163330"/>
+    <text x="186" y="23">macOS</text>
+    <rect x="312" y="0" width="130" height="34" rx="10" fill="#163330"/>
+    <text x="332" y="23">Linux</text>
+  </g>
+
+  <!-- Sparkle accent -->
+  <path d="M 1170,514 Q 1174,534 1190,538 Q 1174,542 1170,562 Q 1166,542 1150,538 Q 1166,534 1170,514 Z" fill="#6E8F89"/>
+</svg>

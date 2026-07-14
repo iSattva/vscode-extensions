@@ -1,0 +1,149 @@
+{
+  "name": "vector-html",
+  "displayName": "Vector HTML",
+  "description": "Sanitized HTML preview for VS Code, with one-click HTML to PDF/Markdown export.",
+  "version": "0.0.3",
+  "publisher": "iSattva",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iSattva/vscode-extensions.git",
+    "directory": "vector-html"
+  },
+  "bugs": {
+    "url": "https://github.com/iSattva/vscode-extensions/issues"
+  },
+  "galleryBanner": {
+    "color": "#0D3D3A",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "html",
+    "html preview",
+    "html to pdf",
+    "html to markdown",
+    "documentation",
+    "docs"
+  ],
+  "activationEvents": [
+    "onLanguage:html"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "vector.html.preview",
+        "displayName": "Vector HTML Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.html"
+          },
+          {
+            "filenamePattern": "*.htm"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "vector.html.openPreview",
+        "title": "Vector HTML: Open Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "vector.html.exportPdf",
+        "title": "Vector HTML: Export as PDF"
+      },
+      {
+        "command": "vector.html.exportMarkdown",
+        "title": "Vector HTML: Export as Markdown"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vector.html.openPreview",
+          "when": "editorLangId == html",
+          "group": "navigation"
+        }
+      ],
+      "vector.rootMenu": [
+        {
+          "command": "vector.html.openPreview",
+          "when": "editorLangId == html || resourceExtname == .html || resourceExtname == .htm",
+          "group": "2_html@1"
+        },
+        {
+          "command": "vector.html.exportPdf",
+          "when": "editorLangId == html || resourceExtname == .html || resourceExtname == .htm",
+          "group": "2_html@2"
+        },
+        {
+          "command": "vector.html.exportMarkdown",
+          "when": "editorLangId == html || resourceExtname == .html || resourceExtname == .htm",
+          "group": "2_html@3"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "title": "Vector HTML › Export",
+        "order": 0,
+        "properties": {
+          "vector.html.export.outputFolder": {
+            "type": "string",
+            "order": 1,
+            "default": "",
+            "description": "Folder to write exported files into. Leave empty to export next to the source HTML file."
+          },
+          "vector.html.export.pdf.paperFormat": {
+            "type": "string",
+            "order": 2,
+            "enum": [
+              "A4",
+              "Letter",
+              "Legal"
+            ],
+            "default": "A4",
+            "description": "Paper size used for PDF export."
+          },
+          "vector.html.export.markdown.preferPandoc": {
+            "type": "boolean",
+            "order": 3,
+            "default": true,
+            "description": "Use Pandoc for HTML to Markdown export when it is detected on PATH. Falls back to the built-in JS converter when Pandoc is unavailable or this is disabled."
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "package": "npm run build && node scripts/package-vsix.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/sanitize-html": "^2.16.1",
+    "@types/turndown": "^5.0.4",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "chrome-launcher": "^1.1.0",
+    "puppeteer-core": "^22.0.0",
+    "sanitize-html": "^2.17.6",
+    "turndown": "^7.2.0"
+  }
+}

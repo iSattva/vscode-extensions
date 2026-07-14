@@ -2,7 +2,7 @@
   "name": "vector-markdown",
   "displayName": "Vector Markdown",
   "description": "Branded Markdown preview themes with one-click PDF, HTML, and DOCX export — logos, brand colors, and admonitions for enterprise docs.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "iSattva",
   "icon": "media/icon.png",
   "repository": {
@@ -112,14 +112,14 @@
       "editor/context": [
         {
           "submenu": "vector.rootMenu",
-          "when": "editorLangId == markdown",
+          "when": "editorLangId == markdown || editorLangId == html",
           "group": "1_vector"
         }
       ],
       "explorer/context": [
         {
           "submenu": "vector.rootMenu",
-          "when": "resourceExtname == .md",
+          "when": "resourceExtname == .md || resourceExtname == .html || resourceExtname == .htm",
           "group": "1_vector"
         }
       ],
