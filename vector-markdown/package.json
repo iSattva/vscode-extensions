@@ -1,0 +1,192 @@
+{
+  "name": "vector-markdown",
+  "displayName": "Vector Markdown",
+  "description": "Enterprise-branded Markdown preview themes and one-click export to PDF, HTML, and DOCX.",
+  "version": "0.1.0",
+  "publisher": "vector",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0B1E3D",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Formatters",
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "preview",
+    "theme",
+    "branding",
+    "export",
+    "pdf",
+    "docx",
+    "html"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vectorMarkdown.openPreview",
+        "title": "Vector Markdown: Open Branded Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "vectorMarkdown.selectTheme",
+        "title": "Vector Markdown: Select Preview Theme"
+      },
+      {
+        "command": "vectorMarkdown.configureCustomTheme",
+        "title": "Vector Markdown: Configure Custom Theme..."
+      },
+      {
+        "command": "vectorMarkdown.exportPdf",
+        "title": "Vector Markdown: Export as PDF"
+      },
+      {
+        "command": "vectorMarkdown.exportHtml",
+        "title": "Vector Markdown: Export as HTML"
+      },
+      {
+        "command": "vectorMarkdown.exportDocx",
+        "title": "Vector Markdown: Export as DOCX"
+      },
+      {
+        "command": "vectorMarkdown.exportAll",
+        "title": "Vector Markdown: Export as PDF, HTML && DOCX"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vectorMarkdown.openPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "vectorMarkdown.exportSubmenu",
+          "when": "editorLangId == markdown",
+          "group": "9_vectorMarkdown"
+        }
+      ],
+      "explorer/context": [
+        {
+          "submenu": "vectorMarkdown.exportSubmenu",
+          "when": "resourceExtname == .md",
+          "group": "9_vectorMarkdown"
+        }
+      ],
+      "vectorMarkdown.exportSubmenu": [
+        {
+          "command": "vectorMarkdown.exportPdf",
+          "group": "1_export@1"
+        },
+        {
+          "command": "vectorMarkdown.exportHtml",
+          "group": "1_export@2"
+        },
+        {
+          "command": "vectorMarkdown.exportDocx",
+          "group": "1_export@3"
+        },
+        {
+          "command": "vectorMarkdown.exportAll",
+          "group": "1_export@4"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "vectorMarkdown.exportSubmenu",
+        "label": "Vector Markdown: Export"
+      }
+    ],
+    "configuration": {
+      "title": "Vector Markdown",
+      "properties": {
+        "vectorMarkdown.theme": {
+          "type": "string",
+          "enum": [
+            "default",
+            "corporate-light",
+            "corporate-dark",
+            "minimal",
+            "custom"
+          ],
+          "enumDescriptions": [
+            "Neutral built-in look, no branding applied.",
+            "Light corporate theme with a header/footer band for logo and company name.",
+            "Dark corporate theme with a header/footer band for logo and company name.",
+            "Minimal, distraction-free typography with no chrome."
+          ],
+          "default": "default",
+          "description": "Active preview/export theme. Set to \"custom\" to use vectorMarkdown.customThemePath."
+        },
+        "vectorMarkdown.customThemePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute or workspace-relative path to a custom CSS file, used when vectorMarkdown.theme is \"custom\"."
+        },
+        "vectorMarkdown.branding.companyName": {
+          "type": "string",
+          "default": "",
+          "description": "Company name shown in the preview header/footer and export cover page for the corporate themes."
+        },
+        "vectorMarkdown.branding.logoPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute or workspace-relative path to a company logo (PNG/SVG) shown in the preview header for the corporate themes."
+        },
+        "vectorMarkdown.export.outputFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder to write exported files into. Leave empty to export next to the source Markdown file."
+        },
+        "vectorMarkdown.export.docx.preferPandoc": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Pandoc for DOCX export when it is detected on PATH. Falls back to the built-in JS converter when Pandoc is unavailable or this is disabled."
+        },
+        "vectorMarkdown.export.pdf.paperFormat": {
+          "type": "string",
+          "enum": [
+            "A4",
+            "Letter",
+            "Legal"
+          ],
+          "default": "A4",
+          "description": "Paper size used for PDF export."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
+    "watch": "npm run build -- --watch",
+    "package": "vsce package --allow-missing-repository --no-rewrite-relative-links"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "chrome-launcher": "^1.1.0",
+    "html-to-docx": "^1.8.0",
+    "markdown-it": "^14.0.0",
+    "puppeteer-core": "^22.0.0"
+  }
+}

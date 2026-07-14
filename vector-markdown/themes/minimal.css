@@ -1,0 +1,64 @@
+/* Vector Markdown - Minimal theme: distraction-free typography, no chrome */
+body.vector-markdown {
+  font-family: Georgia, "Iowan Old Style", serif;
+  color: #202020;
+  background: #fbfbfa;
+  line-height: 1.75;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  font-size: 17px;
+}
+
+.vector-markdown h1,
+.vector-markdown h2,
+.vector-markdown h3 {
+  font-weight: 600;
+}
+
+.vector-markdown code,
+.vector-markdown pre {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  background: #f1f0ee;
+}
+
+.vector-markdown code {
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+.vector-markdown pre code {
+  display: block;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.vector-markdown blockquote {
+  border-left: 3px solid #cfcfcf;
+  margin: 0;
+  padding: 4px 16px;
+  color: #4a4a4a;
+}
+
+.vector-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 16px;
+}
+
+.vector-markdown table th,
+.vector-markdown table td {
+  border-bottom: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.vector-markdown table th {
+  font-weight: 600;
+  border-bottom: 2px solid #202020;
+}
+
+.vector-markdown .vector-header,
+.vector-markdown .vector-footer {
+  display: none;
+}

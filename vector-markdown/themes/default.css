@@ -1,0 +1,46 @@
+/* Vector Markdown - Default theme: neutral, no branding chrome */
+body.vector-markdown {
+  font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: #1f1f1f;
+  background: #ffffff;
+  line-height: 1.6;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.vector-markdown h1,
+.vector-markdown h2,
+.vector-markdown h3 {
+  font-weight: 600;
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 6px;
+}
+
+.vector-markdown code {
+  background: #f2f2f2;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.vector-markdown pre code {
+  display: block;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.vector-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.vector-markdown table th,
+.vector-markdown table td {
+  border: 1px solid #ddd;
+  padding: 6px 10px;
+}
+
+.vector-markdown .vector-header,
+.vector-markdown .vector-footer {
+  display: none;
+}

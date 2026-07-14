@@ -1,0 +1,92 @@
+/* Vector Markdown - Corporate Dark theme: branded header/footer band */
+body.vector-markdown {
+  font-family: "Segoe UI", -apple-system, Helvetica, Arial, sans-serif;
+  color: #e6e9ef;
+  background: #12151c;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.vector-markdown .vector-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: #0b1e3d;
+  color: #ffffff;
+  border-bottom: 4px solid #4d8dff;
+}
+
+.vector-markdown .vector-header img {
+  height: 28px;
+  width: auto;
+}
+
+.vector-markdown .vector-header .vector-company-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.vector-markdown .vector-body {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.vector-markdown h1,
+.vector-markdown h2,
+.vector-markdown h3 {
+  color: #9dc0ff;
+  font-weight: 600;
+  border-bottom: 1px solid #262c38;
+  padding-bottom: 6px;
+}
+
+.vector-markdown a {
+  color: #4d8dff;
+}
+
+.vector-markdown code {
+  background: #1c2130;
+  color: #e6e9ef;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.vector-markdown pre code {
+  display: block;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.vector-markdown blockquote {
+  border-left: 4px solid #4d8dff;
+  margin: 0;
+  padding: 4px 16px;
+  background: #1a1f2b;
+  color: #c3c9d6;
+}
+
+.vector-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.vector-markdown table th {
+  background: #1c2130;
+}
+
+.vector-markdown table th,
+.vector-markdown table td {
+  border: 1px solid #262c38;
+  padding: 6px 10px;
+}
+
+.vector-markdown .vector-footer {
+  padding: 12px 32px;
+  font-size: 11px;
+  color: #8890a0;
+  border-top: 1px solid #262c38;
+  text-align: center;
+}
