@@ -4,18 +4,26 @@
       <stop offset="0%" stop-color="#0A1F1D"/>
       <stop offset="100%" stop-color="#103D38"/>
     </linearGradient>
-    <linearGradient id="stroke" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#2AADA0"/>
-      <stop offset="100%" stop-color="#C9A96E"/>
+    <linearGradient id="iconGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2DD4BF"/>
+      <stop offset="100%" stop-color="#FBBF24"/>
     </linearGradient>
   </defs>
 
   <rect width="1280" height="640" fill="url(#bg)"/>
 
-  <!-- Vector arrow mark -->
-  <g transform="translate(120,140)">
-    <line x1="20" y1="300" x2="206" y2="95" stroke="url(#stroke)" stroke-width="34" stroke-linecap="round"/>
-    <polygon points="267,28 242,127 171,63" fill="#C9A96E"/>
+  <!-- Icon mark, matching media/icon-source.svg exactly (viewBox 0 0 128 128, scaled 2.96875x) -->
+  <g transform="translate(110,130) scale(2.96875)">
+    <rect width="128" height="128" rx="32" fill="#0D1117"/>
+    <g stroke="url(#iconGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 28 32 L 28 96 L 64 96"/>
+      <path d="M 28 96 L 96 28"/>
+      <path d="M 72 28 L 96 28 L 96 52"/>
+    </g>
+    <g stroke="url(#iconGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 72 96 L 72 74 L 81 86 L 90 74 L 90 96"/>
+      <path d="M 100 96 L 100 74 Q 116 74 116 85 Q 116 96 100 96 Z"/>
+    </g>
   </g>
 
   <text x="470" y="270" font-family="Georgia, 'Playfair Display', serif" font-size="72" font-weight="700" fill="#FFFFFF">Vector Markdown</text>

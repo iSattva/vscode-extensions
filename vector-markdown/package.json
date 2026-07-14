@@ -1,9 +1,9 @@
 {
   "name": "vector-markdown",
   "displayName": "Vector Markdown",
-  "description": "Enterprise-branded Markdown preview themes and one-click export to PDF, HTML, and DOCX.",
+  "description": "Branded Markdown preview themes with one-click PDF, HTML, and DOCX export — logos, brand colors, and admonitions for enterprise docs.",
   "version": "0.1.0",
-  "publisher": "vector",
+  "publisher": "Vector",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
@@ -27,13 +27,28 @@
   ],
   "keywords": [
     "markdown",
-    "preview",
-    "theme",
-    "branding",
-    "export",
-    "pdf",
-    "docx",
-    "html"
+    "markdown preview",
+    "markdown to pdf",
+    "markdown to word",
+    "markdown to docx",
+    "markdown to html",
+    "pdf export",
+    "docx export",
+    "html export",
+    "word export",
+    "preview theme",
+    "custom theme",
+    "corporate branding",
+    "brand colors",
+    "logo",
+    "admonitions",
+    "callouts",
+    "github markdown",
+    "documentation",
+    "docs",
+    "pandoc",
+    "enterprise",
+    "readme preview"
   ],
   "activationEvents": [
     "onLanguage:markdown"

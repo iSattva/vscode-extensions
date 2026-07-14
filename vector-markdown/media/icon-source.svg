@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="vectorGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2DD4BF" />
+      <stop offset="100%" stop-color="#FBBF24" />
+    </linearGradient>
+  </defs>
+
+  <rect width="128" height="128" rx="32" fill="#0D1117" />
+
+  <g stroke="url(#vectorGrad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 28 32 L 28 96 L 64 96" />
+
+    <path d="M 28 96 L 96 28" />
+    <path d="M 72 28 L 96 28 L 96 52" />
+  </g>
+
+  <g stroke="url(#vectorGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 72 96 L 72 74 L 81 86 L 90 74 L 90 96" />
+    <path d="M 100 96 L 100 74 Q 116 74 116 85 Q 116 96 100 96 Z" />
+  </g>
+</svg>

@@ -17,6 +17,7 @@ console.log("Staging in", stageDir);
 const filesToCopy = [
   "package.json",
   "package-lock.json",
+  ".vscodeignore",
   "CHANGELOG.md",
   "LICENSE",
   "README.md",
@@ -53,7 +54,16 @@ console.log("Packaging...");
 // above), so vsce should ship it as-is rather than trying its own
 // dependency detection (or, with --no-dependencies, excluding it).
 const vsceBin = path.join(projectDir, "node_modules", ".bin", process.platform === "win32" ? "vsce.cmd" : "vsce");
-execFileSync(vsceBin, ["package"], {
+
+// vsce's auto-detected base URL (from repository.url alone) points at the
+// repo root, but README.md's relative links (e.g. media/splash.png) are
+// relative to repository.directory, not the repo root - so it has to be
+// given explicitly for this monorepo layout, or every relative link/image
+// in the README resolves one directory too high once published.
+const repoUrl = pkg.repository.url.replace(/\.git$/, "");
+const baseUrl = `${repoUrl}/raw/HEAD/${pkg.repository.directory}/`;
+
+execFileSync(vsceBin, ["package", "--baseContentUrl", baseUrl, "--baseImagesUrl", baseUrl], {
   cwd: stageDir,
   stdio: "inherit",
   shell: true,
