@@ -5,6 +5,14 @@
   "version": "0.1.0",
   "publisher": "vector",
   "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reach-himanshu/vscode-extensions.git",
+    "directory": "vector-markdown"
+  },
+  "bugs": {
+    "url": "https://github.com/reach-himanshu/vscode-extensions/issues"
+  },
   "galleryBanner": {
     "color": "#0B1E3D",
     "theme": "dark"
@@ -173,7 +181,7 @@
     "vscode:prepublish": "npm run build",
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
     "watch": "npm run build -- --watch",
-    "package": "vsce package --allow-missing-repository --no-rewrite-relative-links"
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",

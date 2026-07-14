@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="media/splash.svg" alt="Vector Markdown" width="640" />
+  <img src="media/splash.png" alt="Vector Markdown" width="640" />
 </p>
 
 # Vector Markdown
@@ -45,15 +45,8 @@ See **[USAGE.md](USAGE.md)** for detailed setup, commands, and configuration ref
 
 ## Before publishing to a Marketplace
 
-This scaffold has no Git remote yet (local repo only). Before publishing:
-
-1. Add a `repository` field to `package.json` pointing at your real Git remote, e.g.:
-   ```json
-   "repository": { "type": "git", "url": "https://github.com/<org>/vector-markdown.git" }
-   ```
-2. Once that's set, drop the `--allow-missing-repository --no-rewrite-relative-links` flags from the `package` script in `package.json` — they exist only to let packaging work without a remote.
-3. Replace `media/icon.png` with real Vector brand artwork (currently a generated placeholder mark).
-4. Set a real `publisher` id in `package.json` (currently `"vector"` as a placeholder) matching your Marketplace publisher account.
+1. Replace `media/icon.png` with real Vector brand artwork (currently a generated placeholder mark).
+2. Set a real `publisher` id in `package.json` (currently `"vector"` as a placeholder) matching your Marketplace publisher account.
 
 ## License
 
