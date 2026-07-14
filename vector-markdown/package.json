@@ -7,11 +7,11 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/reach-himanshu/vscode-extensions.git",
+    "url": "https://github.com/iSattva/vscode-extensions.git",
     "directory": "vector-markdown"
   },
   "bugs": {
-    "url": "https://github.com/reach-himanshu/vscode-extensions/issues"
+    "url": "https://github.com/iSattva/vscode-extensions/issues"
   },
   "galleryBanner": {
     "color": "#0D3D3A",
