@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.1 (unreleased)
+## 0.0.3
 
-- Initial scaffold: HTML preview, export HTML → PDF, export HTML → Markdown.
-  (PDF viewing left out of scope for now.)
+- Initial release: sanitized HTML preview, export HTML → PDF, export HTML →
+  Markdown.

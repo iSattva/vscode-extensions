@@ -42,9 +42,9 @@ See **[USAGE.md](USAGE.md)** for detailed setup, commands, and configuration ref
 
 1. Install the extension.
 2. Open any `.md` file.
-3. Run **Vector Markdown: Open Branded Preview** from the Command Palette (or the preview icon in the editor toolbar).
+3. Run **Vector Markdown: Open Preview** from the Command Palette (or the preview icon in the editor toolbar).
 4. Run **Vector Markdown: Select Preview Theme** to switch themes.
-5. Right-click the file (in the editor or Explorer) → **Vector Markdown: Export** → pick PDF, HTML, or DOCX.
+5. Right-click the file (in the editor or Explorer) → **Vector** → **Vector Markdown: Export as PDF / HTML / DOCX**.
 
 ## Acknowledgments
 
