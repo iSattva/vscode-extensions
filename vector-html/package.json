@@ -2,7 +2,7 @@
   "name": "vector-html",
   "displayName": "Vector HTML",
   "description": "Sanitized HTML preview for VS Code, with one-click HTML to PDF/Markdown export.",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "iSattva",
   "icon": "media/icon.png",
   "repository": {

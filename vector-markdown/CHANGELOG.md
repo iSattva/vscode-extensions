@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2
+
+- Fix: `.vscodeignore` excluded `node_modules` from the packaged extension,
+  breaking PDF and DOCX export at runtime (`chrome-launcher`/`html-to-docx`
+  could not be found).
+- Add a confirmation warning before exporting a document that already looks
+  like previously-exported HTML output (a full `<html>` document or a
+  `vector-body` wrapper div), since re-exporting it would nest another
+  wrapper around the content instead of rendering cleanly.
+
 ## 0.1.1
 
 - Fixed the shared "Vector" context-menu flyout not appearing in `.md` files once `vector-html` was also installed - only one extension can anchor a shared submenu into `editor/context`/`explorer/context`, so `vector-markdown`'s anchor `when` clause now covers both extensions' file types (see `VECTOR_CONVENTIONS.md`).
