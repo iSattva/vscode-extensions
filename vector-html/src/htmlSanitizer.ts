@@ -15,6 +15,8 @@ export function sanitizeRenderedHtml(html: string): string {
       ...sanitizeHtml.defaults.allowedAttributes,
       a: ["href", "name", "target", "title", "rel"],
       img: ["src", "alt", "title", "width", "height"],
+      html: ["class"],
+      body: ["class"],
       div: ["class"],
       span: ["class"],
       code: ["class"],

@@ -88,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     vscode.commands.registerCommand("vector.markdown.exportAll", async (uri?: vscode.Uri) => {
       const document = await resolveMarkdownDocument(uri);
-      if (!document) {
+      if (!document || !(await confirmIfAlreadyExportedHtml(document))) {
         return;
       }
       await vscode.window.withProgress(
@@ -142,6 +142,32 @@ async function resolveMarkdownDocument(uri?: vscode.Uri): Promise<vscode.TextDoc
   return undefined;
 }
 
+// Matches the outer scaffolding of a document this extension already
+// exported (or any full HTML document) and the "vector-body" wrapper div
+// that renderer.ts always emits. markdown-it's `html: true` setting passes
+// raw HTML like this straight through unmodified, so re-exporting a file
+// that already contains it produces nested "vector-body" divs instead of a
+// clean single-wrapped render - see [[project-vector-markdown]] history.
+const EXPORTED_HTML_MARKER_RE = /<!DOCTYPE\s+html|<html[\s>]|class="vector-body"/i;
+
+function looksLikeAlreadyExportedHtml(text: string): boolean {
+  return EXPORTED_HTML_MARKER_RE.test(text);
+}
+
+async function confirmIfAlreadyExportedHtml(document: vscode.TextDocument): Promise<boolean> {
+  if (!looksLikeAlreadyExportedHtml(document.getText())) {
+    return true;
+  }
+  const choice = await vscode.window.showWarningMessage(
+    `Vector Markdown: ${baseName(document)} looks like it already contains exported HTML output ` +
+      `(a full <html> document or a "vector-body" wrapper div), not original Markdown source. ` +
+      `Exporting it again will nest the content inside another wrapper. Export anyway?`,
+    { modal: true },
+    "Export Anyway"
+  );
+  return choice === "Export Anyway";
+}
+
 async function runExport(
   label: string,
   uri: vscode.Uri | undefined,
@@ -150,7 +176,7 @@ async function runExport(
   run: (document: vscode.TextDocument) => Promise<string>
 ): Promise<void> {
   const document = await resolveMarkdownDocument(uri);
-  if (!document) {
+  if (!document || !(await confirmIfAlreadyExportedHtml(document))) {
     return;
   }
   await safeExport(label, document, logger, () => run(document));
