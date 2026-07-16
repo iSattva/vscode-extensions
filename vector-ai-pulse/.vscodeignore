@@ -1,0 +1,12 @@
+.vscode/**
+src/**
+out/**
+scripts/**
+docs/**
+.gitignore
+tsconfig.json
+**/*.map
+*.md
+!README.md
+!CHANGELOG.md
+media/icon-source.png

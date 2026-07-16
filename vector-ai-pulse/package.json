@@ -1,0 +1,121 @@
+{
+  "name": "vector-ai-pulse",
+  "displayName": "Vector AI Pulse",
+  "description": "In-editor budget pacing and efficiency insight for metered, agentic AI coding tools (Claude Code and peers) — zero network calls, local-only.",
+  "version": "0.0.1",
+  "publisher": "iSattva",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iSattva/vscode-extensions.git",
+    "directory": "vector-ai-pulse"
+  },
+  "bugs": {
+    "url": "https://github.com/iSattva/vscode-extensions/issues"
+  },
+  "galleryBanner": {
+    "color": "#0D3D3A",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "claude code",
+    "ai budget",
+    "cost tracking",
+    "token usage",
+    "spend pacing",
+    "privacy",
+    "status bar"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vector.aiPulse.openPanel",
+        "title": "Vector AI Pulse: Open Pulse Panel"
+      },
+      {
+        "command": "vector.aiPulse.setBudget",
+        "title": "Vector AI Pulse: Set Budget..."
+      },
+      {
+        "command": "vector.aiPulse.manualEntry",
+        "title": "Vector AI Pulse: Log Manual Entry..."
+      },
+      {
+        "command": "vector.aiPulse.exportCsv",
+        "title": "Vector AI Pulse: Export CSV..."
+      },
+      {
+        "command": "vector.aiPulse.resetData",
+        "title": "Vector AI Pulse: Reset All Data"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "Vector AI Pulse",
+        "order": 0,
+        "properties": {
+          "vector.aiPulse.cueStyle": {
+            "type": "string",
+            "order": 1,
+            "enum": [
+              "standard",
+              "minimal",
+              "off"
+            ],
+            "default": "standard",
+            "description": "Status bar cue style. \"minimal\" shows spend only, \"off\" hides the item entirely."
+          },
+          "vector.aiPulse.pricing": {
+            "type": "object",
+            "order": 2,
+            "default": {},
+            "description": "Per-million-token USD pricing overrides by model id (exact id, or a prefix ending in \"*\"). Merged over the built-in defaults; set a model id to override input/output/cacheRead/cacheWrite rates."
+          },
+          "vector.aiPulse.trendDays": {
+            "type": "number",
+            "order": 3,
+            "default": 30,
+            "minimum": 7,
+            "maximum": 180,
+            "description": "How many days of history the Pulse panel's trend chart covers."
+          },
+          "vector.aiPulse.activeSessionWindowMinutes": {
+            "type": "number",
+            "order": 4,
+            "default": 10,
+            "minimum": 1,
+            "maximum": 60,
+            "description": "A Claude Code session shows as \"active\" in the Pulse panel if it had activity within this many minutes."
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "lint:privacy": "node scripts/check-no-network.mjs",
+    "render:icon": "node scripts/render-icon.mjs",
+    "package": "npm run build && npm run lint:privacy && node scripts/package-vsix.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "chrome-launcher": "^1.1.0",
+    "puppeteer-core": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}

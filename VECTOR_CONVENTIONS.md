@@ -1,10 +1,15 @@
 # Conventions for "Vector" extensions
 
 Shared rules for every extension in this repo published under the "Vector" family
-(currently `vector-markdown` and `vector-html`; a `vector-data` extension for
-Parquet/CSV/JSON/XML is planned next). Keeping these consistent lets the
-extensions coexist in the same VS Code install without colliding on menus,
+(currently `vector-markdown`, `vector-html`, and `vector-ai-pulse`; a `vector-data`
+extension for Parquet/CSV/JSON/XML is planned next). Keeping these consistent lets
+the extensions coexist in the same VS Code install without colliding on menus,
 commands, settings, or keybindings.
+
+`vector-ai-pulse` is a status-bar/webview utility with no file-type association, so
+it doesn't contribute to `editor/context` / `explorer/context` / `vector.rootMenu`
+at all - the shared-submenu rules below apply only to file-preview-style Vector
+extensions.
 
 ## 1. Namespace: `vector.<extension>.*`
 

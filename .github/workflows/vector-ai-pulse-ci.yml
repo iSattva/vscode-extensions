@@ -1,0 +1,28 @@
+name: vector-ai-pulse CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "vector-ai-pulse/**"
+      - ".github/workflows/vector-ai-pulse-ci.yml"
+  pull_request:
+    paths:
+      - "vector-ai-pulse/**"
+      - ".github/workflows/vector-ai-pulse-ci.yml"
+
+jobs:
+  build-and-privacy-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vector-ai-pulse
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build
+      - name: R8 privacy lint (no network-capable imports)
+        run: npm run lint:privacy
