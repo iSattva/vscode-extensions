@@ -10,10 +10,18 @@ Ambient budget pacing for metered, agentic AI coding tools (Claude Code and peer
 
 ## What it does (v1)
 
-- Automatically tracks Claude Code usage by reading `~/.claude/projects/**/*.jsonl` locally (never your prompts or completions — token counts, model, timestamps, and cost only).
+- Automatically tracks usage by reading each tool's own local session data — no manual entry needed:
+  - **Claude Code** — `~/.claude/projects/**/*.jsonl`
+  - **Cline** — its VS Code extension's `taskHistory.json`
+  - **Codex CLI** — `$CODEX_HOME/sessions/**/rollout-*.jsonl`
+  
+  Never your prompts or completions — token counts, model, timestamps, and cost only.
 - Tracks your daily/monthly AI spend against a budget you set.
 - Shows a glanceable status bar cue — green/amber/red pace state — so you know if you're on track without leaving the editor.
-- Click the cue to open the Pulse panel, ordered today-first: an "Active now" card for any Claude Code session with activity in the last few minutes, pace projection with token totals, per-project cards (each project's live session plus its recent history, with a mini insight per session when something's actionable), a spend-by-model-over-time table (today / 7 days / 30 days / all time), a configurable-length trend chart, and all-time by-tool/by-model breakdowns and top-5-most-expensive-sessions for the rearview.
+- Click the cue to open the Pulse panel, split into two tabs:
+  - **Live/Recent** — open sessions (live and idle, each session's own accent color), a rule-based recommendation, today's and this period's pace against budget, and today's activity grouped by project.
+  - **Past** — a period toggle (week / last-N-days / all time) and metric toggle (cost / tokens / cache hit %) driving one trend chart and an expandable top-sessions list, plus all-time spend-by-model-over-time, by-tool, and by-model breakdowns.
+- A native notification nudges you once a session goes quiet long enough to count as closed, only when there's something actionable to say (capped at 3/day).
 - Manual entry for tools that don't expose per-token usage yet, plus CSV export for your own records.
 
 ## Commands
@@ -29,4 +37,5 @@ Ambient budget pacing for metered, agentic AI coding tools (Claude Code and peer
 - `vector.aiPulse.cueStyle` — `standard` (default), `minimal`, or `off`.
 - `vector.aiPulse.pricing` — per-million-token USD overrides by model id, merged over built-in defaults.
 - `vector.aiPulse.trendDays` — trend chart window in days (default 30, 7-180).
-- `vector.aiPulse.activeSessionWindowMinutes` — how recent a Claude Code session's last activity must be to show as "active" (default 10).
+- `vector.aiPulse.activeSessionWindowMinutes` — how recent a session's last activity must be to show as "active" (default 10).
+- `vector.aiPulse.idleSessionWindowMinutes` — how long past the active window a session still shows as "idle" (open but quiet) before it's treated as closed (default 60).
