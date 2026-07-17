@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.2 — Unreleased
+
+Automatic tracking extended beyond Claude Code: Cline (reads `taskHistory.json` from its own globalStorage) and Codex CLI (reads `$CODEX_HOME/sessions/**/rollout-*.jsonl`) are now detected and ingested the same way, no manual entry needed. Collector internals split into a shared byte-offset/directory-walk module plus one file per tool, so each tool's parsing is isolated and a bad assumption in one can't affect another's data.
+
+Panel reimagined around three moments instead of one flat scroll: **Now** tab (open sessions - live and idle, pace cards, recommendation), **Today** tab (time-of-day-aware recap, today-scoped by-project breakdown, cache % as a first-class number), **History** tab (period toggle - week/last-N-days/all-time - and metric toggle - cost/tokens/cache hit % - driving one trend chart and one expandable top-sessions list, replacing four separate fixed tables). All zero-JS: tabs and toggles are radio-input/sibling-selector CSS, expandable session rows are native `<details>`/`<summary>` - webview CSP and `enableScripts: false` are unchanged.
+
+Session-end nudges: a native VS Code notification fires once a session goes quiet long enough to count as closed (not merely idle), only when there's an actionable insight, capped at 3/day - logged to `nudgeLog`.
+
+Idle session state: a session between the active window and a new `vector.aiPulse.idleSessionWindowMinutes` (default 60) window shows as "idle" - hollow, non-pulsing dot - rather than being silently lumped in with sessions closed days ago.
+
+Per-session accent colors (teal/amber/violet/coral, stable hash of sessionId) so simultaneous live/idle sessions in different projects are visually distinguishable from each other, not just from closed sessions.
+
+Brand serif (`Georgia, 'Playfair Display', serif`, system-stack only) confined to the header logotype; all data (values, tables) on a sans stack with tabular figures for legibility and column alignment.
+
 ## 0.0.1 — Unreleased
 
 Initial scaffold: local JSON store, pricing engine, budget pacing, status bar cue, manual entry, CSV export, reset command.

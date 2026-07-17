@@ -1,16 +1,23 @@
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { claudeCodeDetected, scanHistorical, startWatcher } from "./collector";
+import { claudeCodeDetected, scanHistorical, startWatcher } from "./collector-claude";
+import { clineDetected, processClineHistory, startClineWatcher } from "./collector-cline";
+import { codexDetected, scanCodexHistorical, startCodexWatcher } from "./collector-codex";
 import { fmtUsd } from "./format";
 import { computePace, PaceState, worstState } from "./pacing";
-import { renderPanelHtml } from "./panel";
+import { aggregateSessions, medianSessionCost, renderPanelHtml, sessionInsight } from "./panel";
 import { computeCost, ModelRate } from "./pricing";
 import { addRecord, Budget, loadStore, saveStore, Store, storeFileExists, storePath, UsageRecord } from "./store";
+
+const SESSION_END_NUDGE_TYPE = "session-end";
+const MAX_NUDGES_PER_DAY = 3;
+let sessionEndCheckTimer: ReturnType<typeof setInterval> | undefined;
 
 let statusBarItem: vscode.StatusBarItem;
 let store: Store;
 let panel: vscode.WebviewPanel | undefined;
 let brandMarkDataUri = "";
+let extensionContext: vscode.ExtensionContext;
 
 const STATE_COLOR: Record<PaceState, string | undefined> = {
   neutral: undefined,
@@ -40,6 +47,61 @@ function trendDays(): number {
 
 function activeSessionWindowMinutes(): number {
   return vscode.workspace.getConfiguration("vector.aiPulse").get<number>("activeSessionWindowMinutes") ?? 10;
+}
+
+function idleSessionWindowMinutes(): number {
+  return vscode.workspace.getConfiguration("vector.aiPulse").get<number>("idleSessionWindowMinutes") ?? 60;
+}
+
+// Claude Code never emits a "session ended" event, only a last-write
+// timestamp, so this runs on a timer rather than in response to any single
+// ingested record - a session can go from idle to closed purely because
+// time passed with nothing new arriving. Fires only on the idle->closed
+// transition (never active->idle, which would nudge mid-flow - PRD B3) and
+// only when sessionInsight() has something actionable to say; a session
+// closing quietly is not itself worth a toast.
+function sessionEndNudgeKey(sessionId: string): string {
+  return `${SESSION_END_NUDGE_TYPE}:${sessionId}`;
+}
+
+function checkSessionEndNudges(): void {
+  const idleWindowMs = idleSessionWindowMinutes() * 60_000;
+  const now = Date.now();
+  const alreadyObserved = new Set(store.nudgeLog.filter((n) => n.nudgeType.startsWith(`${SESSION_END_NUDGE_TYPE}:`)).map((n) => n.nudgeType));
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+  let firedToday = store.nudgeLog.filter(
+    (n) => n.nudgeType.startsWith(`${SESSION_END_NUDGE_TYPE}:`) && n.action === "dismissed" && n.firedAt >= todayStart
+  ).length;
+
+  const medianCost = medianSessionCost(store.records);
+  const sessions = [...aggregateSessions(store.records).values()].filter((s) => s.tool === "claude-code");
+  let changed = false;
+
+  for (const s of sessions) {
+    const sinceLast = now - s.lastAt;
+    const justClosed = sinceLast > idleWindowMs && sinceLast <= idleWindowMs + 90_000; // one check-interval grace window
+    const key = sessionEndNudgeKey(s.sessionId);
+    if (!justClosed || alreadyObserved.has(key)) continue;
+
+    // Log the observation regardless of whether we actually notify, so a
+    // capped-out day doesn't retry-fire a now-stale nudge once the cap
+    // resets tomorrow - the moment to act on it has already passed.
+    const insight = firedToday < MAX_NUDGES_PER_DAY ? sessionInsight(s, medianCost) : null;
+    store.nudgeLog.push({
+      nudgeType: key,
+      firedAt: new Date(now).toISOString(),
+      action: insight ? "dismissed" : "ignored",
+      costDeltaObserved: 0,
+    });
+    changed = true;
+
+    if (!insight) continue;
+    firedToday++;
+    vscode.window.showInformationMessage(`Vector AI Pulse - ${s.workspace}: ${insight}`, "Open Pulse Panel").then((choice) => {
+      if (choice === "Open Pulse Panel") openPanel();
+    });
+  }
+  if (changed) saveStore(store);
 }
 
 function refreshStatusBar(): void {
@@ -79,9 +141,12 @@ function refreshPanel(): void {
     budget: store.budget,
     storePath,
     claudeDetected: claudeCodeDetected(),
+    clineDetected: clineDetected(extensionContext),
+    codexDetected: codexDetected(),
     brandMarkDataUri,
     trendDays: trendDays(),
     activeSessionWindowMinutes: activeSessionWindowMinutes(),
+    idleSessionWindowMinutes: idleSessionWindowMinutes(),
   });
 }
 
@@ -210,6 +275,7 @@ async function resetData(): Promise<void> {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  extensionContext = context;
   const isFirstRun = !storeFileExists();
   store = loadStore();
 
@@ -247,8 +313,23 @@ export function activate(context: vscode.ExtensionContext): void {
       startWatcher(store, pricingConfig, () => {
         saveStore(store);
         refreshAll();
+      }),
+      startClineWatcher(store, pricingConfig, context, () => {
+        saveStore(store);
+        refreshAll();
+      }),
+      startCodexWatcher(store, pricingConfig, () => {
+        saveStore(store);
+        refreshAll();
       })
     );
+
+    // Idle->closed is purely time-based (no ingested record marks it), so
+    // this can't piggyback on the watcher's refresh callback - it needs its
+    // own tick. 60s keeps the "just closed" grace window in
+    // checkSessionEndNudges tight without being wasteful.
+    sessionEndCheckTimer = setInterval(checkSessionEndNudges, 60_000);
+    context.subscriptions.push({ dispose: () => clearInterval(sessionEndCheckTimer) });
 
     if (claudeCodeDetected()) {
       const importPromise = isFirstRun
@@ -266,6 +347,35 @@ export function activate(context: vscode.ExtensionContext): void {
           saveStore(store);
           refreshAll();
           if (isFirstRun) vscode.window.showInformationMessage(`Vector AI Pulse: imported ${count} usage records from Claude Code.`);
+        }
+      });
+    }
+
+    if (clineDetected(context)) {
+      const found = processClineHistory(store, pricingConfig(), context);
+      if (found > 0) {
+        saveStore(store);
+        refreshAll();
+        if (isFirstRun) vscode.window.showInformationMessage(`Vector AI Pulse: imported ${found} usage records from Cline.`);
+      }
+    }
+
+    if (codexDetected()) {
+      const codexImportPromise = isFirstRun
+        ? vscode.window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: "Vector AI Pulse: importing Codex history" },
+            (progress) =>
+              scanCodexHistorical(store, pricingConfig(), (done, total) => {
+                progress.report({ message: `${done}/${total} sessions` });
+              })
+          )
+        : scanCodexHistorical(store, pricingConfig());
+
+      codexImportPromise.then((count) => {
+        if (count > 0) {
+          saveStore(store);
+          refreshAll();
+          if (isFirstRun) vscode.window.showInformationMessage(`Vector AI Pulse: imported ${count} usage records from Codex.`);
         }
       });
     }

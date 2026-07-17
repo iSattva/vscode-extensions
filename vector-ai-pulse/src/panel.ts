@@ -15,7 +15,29 @@ const BRAND = {
   accentAmber: "#FBBF24",
   textOnDark: "#FFFFFF",
   subtleOnDark: "#9FC7C1",
+  // System-stack only, matching the sibling extensions' splash art
+  // (media/splash.svg): renders as Georgia/Segoe UI almost everywhere,
+  // upgrades to the true brand faces only if a user happens to have them
+  // installed. No @font-face / remote font loading - that would be a
+  // network request from inside the webview, which R8's zero-network
+  // invariant forbids outright, not just discourages.
+  headlineFont: "Georgia, 'Playfair Display', serif",
+  bodyFont: "-apple-system, 'Segoe UI', system-ui, var(--vscode-font-family), sans-serif",
 };
+
+// Small, brand-adjacent palette so simultaneous live sessions (working in
+// >1 project at once) are visually distinguishable from each other, not
+// just from closed sessions. Teal/amber are the brand pair; violet/coral
+// extend it without clashing. Assignment is a stable hash of sessionId
+// (not array index) so a given session keeps its color across re-renders
+// even as the active-session list reorders.
+const ACTIVE_COLORS = [BRAND.accentTeal, BRAND.accentAmber, "#A78BFA", "#FB7185"];
+
+function sessionAccentColor(sessionId: string): string {
+  let hash = 0;
+  for (let i = 0; i < sessionId.length; i++) hash = (hash * 31 + sessionId.charCodeAt(i)) >>> 0;
+  return ACTIVE_COLORS[hash % ACTIVE_COLORS.length];
+}
 
 interface AggregateRow {
   costUsd: number;
@@ -40,23 +62,112 @@ function groupByKey(records: UsageRecord[], key: "tool" | "model"): [string, Agg
   return [...map.entries()].sort((a, b) => b[1].costUsd - a[1].costUsd);
 }
 
-function dailyTrend(records: UsageRecord[], days: number): { date: string; costUsd: number }[] {
-  const byDate = new Map<string, number>();
-  for (const r of records) {
-    const d = r.timestamp.slice(0, 10); // YYYY-MM-DD
-    byDate.set(d, (byDate.get(d) ?? 0) + r.costUsd);
+type Metric = "cost" | "tokens" | "cache";
+type Period = "week" | "month" | "all";
+
+interface MetricBucket {
+  costUsd: number;
+  totalTokens: number;
+  inputTokens: number;
+  cacheReadTokens: number;
+}
+
+function emptyBucket(): MetricBucket {
+  return { costUsd: 0, totalTokens: 0, inputTokens: 0, cacheReadTokens: 0 };
+}
+
+function addToBucket(b: MetricBucket, r: UsageRecord): void {
+  b.costUsd += r.costUsd;
+  b.totalTokens += tokenTotal(r);
+  b.inputTokens += r.inputTokens + r.cacheReadTokens;
+  b.cacheReadTokens += r.cacheReadTokens;
+}
+
+// "cache" reads as a 0-1 hit ratio (cache-read share of total input context)
+// rather than a raw count, since that's the form the number is actually
+// useful in - directly comparable to the "low cache reuse" nudge threshold
+// used elsewhere in this file.
+function metricValue(b: MetricBucket, metric: Metric): number {
+  if (metric === "cost") return b.costUsd;
+  if (metric === "tokens") return b.totalTokens;
+  return b.inputTokens > 0 ? b.cacheReadTokens / b.inputTokens : 0;
+}
+
+function fmtMetric(value: number, metric: Metric): string {
+  if (metric === "cost") return fmtUsd(value);
+  if (metric === "tokens") return fmtTokens(value);
+  return `${(value * 100).toFixed(0)}%`;
+}
+
+const METRIC_LABEL: Record<Metric, string> = { cost: "Cost", tokens: "Tokens", cache: "Cache hit %" };
+
+function periodLabel(period: Period, monthDays: number): string {
+  if (period === "week") return "This week";
+  if (period === "month") return `Last ${monthDays} days`;
+  return "All time";
+}
+
+function periodStartMs(period: Period, monthDays: number, now: number): number {
+  if (period === "week") return now - 7 * 86_400_000;
+  if (period === "month") return now - monthDays * 86_400_000;
+  return 0;
+}
+
+// Week/month bucket daily (fine-grained enough to be useful, coarse enough
+// to stay readable); all-time buckets monthly, capped to the most recent 24
+// months, since daily bars over a multi-year history would be illegible and
+// the question "all time" actually answers is month-over-month trend, not
+// day-over-day.
+function periodBuckets(records: UsageRecord[], period: Period, metric: Metric, now: Date, monthDays: number): TrendPoint[] {
+  if (period === "all") {
+    const byMonth = new Map<string, MetricBucket>();
+    for (const r of records) {
+      const key = r.timestamp.slice(0, 7); // YYYY-MM
+      const b = byMonth.get(key) ?? emptyBucket();
+      addToBucket(b, r);
+      byMonth.set(key, b);
+    }
+    const months = [...byMonth.keys()].sort().slice(-24);
+    return months.map((key) => {
+      const [y, m] = key.split("-");
+      const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+      const b = byMonth.get(key)!;
+      return { label, value: metricValue(b, metric), tooltip: `${label}: ${fmtMetric(metricValue(b, metric), metric)}` };
+    });
   }
-  const out: { date: string; costUsd: number }[] = [];
-  const now = new Date();
+
+  const days = period === "week" ? 7 : monthDays;
+  const byDate = new Map<string, MetricBucket>();
+  for (const r of records) {
+    const key = r.timestamp.slice(0, 10);
+    const b = byDate.get(key) ?? emptyBucket();
+    addToBucket(b, r);
+    byDate.set(key, b);
+  }
+  const out: TrendPoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
     const key = d.toISOString().slice(0, 10);
-    out.push({ date: key, costUsd: byDate.get(key) ?? 0 });
+    const b = byDate.get(key) ?? emptyBucket();
+    const label = key.slice(5);
+    out.push({ label, value: metricValue(b, metric), tooltip: `${key}: ${fmtMetric(metricValue(b, metric), metric)}` });
   }
   return out;
 }
 
-interface SessionAgg {
+function topSessionsForPeriod(records: UsageRecord[], period: Period, metric: Metric, monthDays: number, now: number, n: number): SessionAgg[] {
+  const start = periodStartMs(period, monthDays, now);
+  return [...aggregateSessions(records).values()]
+    .filter((s) => s.lastAt >= start)
+    .sort((a, b) => {
+      const av = metricValue({ costUsd: a.costUsd, totalTokens: a.totalTokens, inputTokens: a.inputTokens, cacheReadTokens: a.cacheReadTokens }, metric);
+      const bv = metricValue({ costUsd: b.costUsd, totalTokens: b.totalTokens, inputTokens: b.inputTokens, cacheReadTokens: b.cacheReadTokens }, metric);
+      return bv - av;
+    })
+    .slice(0, n);
+}
+
+export interface SessionAgg {
   sessionId: string;
   tool: string;
   model: string;
@@ -69,7 +180,7 @@ interface SessionAgg {
   lastAt: number;
 }
 
-function aggregateSessions(records: UsageRecord[]): Map<string, SessionAgg> {
+export function aggregateSessions(records: UsageRecord[]): Map<string, SessionAgg> {
   const map = new Map<string, SessionAgg>();
   for (const r of records) {
     const ts = Date.parse(r.timestamp);
@@ -100,19 +211,34 @@ function aggregateSessions(records: UsageRecord[]): Map<string, SessionAgg> {
   return map;
 }
 
-function topSessions(records: UsageRecord[], n: number): SessionAgg[] {
-  return [...aggregateSessions(records).values()].sort((a, b) => b.costUsd - a.costUsd).slice(0, n);
-}
-
 function isActiveSession(s: SessionAgg, now: number, windowMinutes: number): boolean {
   return s.tool === "claude-code" && now - s.lastAt <= windowMinutes * 60_000;
+}
+
+// Claude Code's JSONL log never emits an explicit "session ended" event -
+// only a last-write timestamp - so a session that's gone quiet past the
+// active window isn't necessarily over: the dev may just be reading output
+// or got pulled away. Idle covers that gap (active window .. idle window)
+// so it reads as "still open, just quiet" rather than being lumped in with
+// sessions closed weeks ago. Only past the idle window do we treat it as
+// genuinely closed (and, separately, fire the session-end nudge).
+function isIdleSession(s: SessionAgg, now: number, activeWindowMinutes: number, idleWindowMinutes: number): boolean {
+  if (s.tool !== "claude-code") return false;
+  const sinceLast = now - s.lastAt;
+  return sinceLast > activeWindowMinutes * 60_000 && sinceLast <= idleWindowMinutes * 60_000;
 }
 
 function activeSessions(records: UsageRecord[], windowMinutes: number, now: number): SessionAgg[] {
   return [...aggregateSessions(records).values()].filter((s) => isActiveSession(s, now, windowMinutes)).sort((a, b) => b.lastAt - a.lastAt);
 }
 
-function medianSessionCost(records: UsageRecord[]): number {
+function idleSessions(records: UsageRecord[], activeWindowMinutes: number, idleWindowMinutes: number, now: number): SessionAgg[] {
+  return [...aggregateSessions(records).values()]
+    .filter((s) => isIdleSession(s, now, activeWindowMinutes, idleWindowMinutes))
+    .sort((a, b) => b.lastAt - a.lastAt);
+}
+
+export function medianSessionCost(records: UsageRecord[]): number {
   const costs = [...aggregateSessions(records).values()]
     .map((s) => s.costUsd)
     .sort((a, b) => a - b);
@@ -130,7 +256,7 @@ function medianSessionCost(records: UsageRecord[]): number {
 // subsequent turn, so that ratio sits near 100% almost by construction and
 // never flags anything real. Cost-relative-to-the-user's-own-median is the
 // signal that's actually well-defined per session.
-function sessionInsight(s: SessionAgg, medianCost: number): string | null {
+export function sessionInsight(s: SessionAgg, medianCost: number): string | null {
   if (s.tool !== "claude-code") return null;
   if (medianCost > 0 && s.costUsd > Math.max(3 * medianCost, 5)) {
     return `One of your priciest sessions (~${(s.costUsd / medianCost).toFixed(1)}x your typical session) - large accumulated context across many turns is the likely driver. Consider splitting unrelated work into fresh sessions.`;
@@ -203,35 +329,47 @@ function recommendedAction(daily: PaceReading, monthly: PaceReading, records: Us
   return { severity: "green", text: "On pace. No action needed right now." };
 }
 
-function buildTrendSvg(trend: { date: string; costUsd: number }[]): string {
+interface TrendPoint {
+  label: string;
+  value: number;
+  tooltip: string;
+}
+
+function buildTrendSvg(trend: TrendPoint[], ariaLabel: string, gradientId: string): string {
   const width = 600;
   const height = 140;
   const padding = 20;
-  const max = Math.max(1e-9, ...trend.map((d) => d.costUsd));
-  const slot = (width - padding * 2) / trend.length;
+  const max = Math.max(1e-9, ...trend.map((d) => d.value));
+  const slot = (width - padding * 2) / Math.max(1, trend.length);
   const barWidth = Math.max(1, slot - 2);
+  const labelStride = Math.max(1, Math.ceil(trend.length / 12));
 
   const bars = trend
     .map((d, i) => {
-      const barHeight = (d.costUsd / max) * (height - padding * 2);
+      const barHeight = (d.value / max) * (height - padding * 2);
       const x = padding + i * slot;
       const y = height - padding - barHeight;
-      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(0, barHeight).toFixed(1)}" fill="url(#pulseBarGrad)"><title>${escapeHtml(d.date)}: ${fmtUsd(d.costUsd)}</title></rect>`;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(0, barHeight).toFixed(1)}" fill="url(#${gradientId})"><title>${escapeHtml(d.tooltip)}</title></rect>`;
     })
     .join("");
 
   const labels = trend
     .map((d, i) => i)
-    .filter((i) => i % 5 === 0)
+    .filter((i) => i % labelStride === 0)
     .map((i) => {
       const x = padding + i * slot;
-      return `<text x="${x.toFixed(1)}" y="${height - 4}" font-size="9" style="fill:var(--vscode-descriptionForeground, #999)">${escapeHtml(trend[i].date.slice(5))}</text>`;
+      return `<text x="${x.toFixed(1)}" y="${height - 4}" font-size="9" style="fill:var(--vscode-descriptionForeground, #999)">${escapeHtml(trend[i].label)}</text>`;
     })
     .join("");
 
-  return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" role="img" aria-label="30-day cost trend">
+  // Gradient id must be unique per <svg> in the document, not just per call:
+  // the History tab renders one of these per period x metric combo (only one
+  // visible at a time via CSS), and a shared id resolves to whichever
+  // element happens to be first in the DOM - if that one goes display:none
+  // when a toggle switches, every other chart's fill breaks along with it.
+  return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" role="img" aria-label="${escapeHtml(ariaLabel)}">
     <defs>
-      <linearGradient id="pulseBarGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <linearGradient id="${gradientId}" x1="0%" y1="100%" x2="0%" y2="0%">
         <stop offset="0%" stop-color="${BRAND.accentTeal}" />
         <stop offset="100%" stop-color="${BRAND.accentAmber}" />
       </linearGradient>
@@ -264,42 +402,64 @@ function buildBreakdownTable(rows: [string, AggregateRow][], labelHeader: string
   </table>`;
 }
 
-function buildTopSessionsTable(sessions: SessionAgg[]): string {
-  if (sessions.length === 0) return `<p class="empty">No sessions yet.</p>`;
-  return `<table>
-    <tr><th>Session</th><th>Tool</th><th>Model</th><th>Workspace</th><th>Cost</th><th>Tokens</th></tr>
-    ${sessions
-      .map(
-        (s) =>
-          `<tr><td>${escapeHtml(s.sessionId.slice(0, 8))}</td><td>${escapeHtml(s.tool)}</td><td>${escapeHtml(s.model)}</td><td>${escapeHtml(s.workspace)}</td><td>${fmtUsd(s.costUsd)}</td><td>${fmtTokens(s.totalTokens)}</td></tr>`
-      )
-      .join("")}
-  </table>`;
+// Zero-JS expandable row: <details>/<summary> is native HTML, needs no
+// script and works fine under the panel's default-src 'none' CSP - clicking
+// a session reveals the same card layout used for live/idle sessions
+// (minus the pulsing dot, since a historical session has no "now" to show).
+function buildExpandableSessionsTable(sessions: SessionAgg[], metric: Metric, medianCost: number): string {
+  if (sessions.length === 0) return `<p class="empty">No sessions in this period.</p>`;
+  const rows = sessions
+    .map((s) => {
+      const value = metricValue({ costUsd: s.costUsd, totalTokens: s.totalTokens, inputTokens: s.inputTokens, cacheReadTokens: s.cacheReadTokens }, metric);
+      const cacheRatio = s.inputTokens > 0 ? s.cacheReadTokens / s.inputTokens : 0;
+      const insight = sessionInsight(s, medianCost);
+      return `<details class="session-details">
+        <summary>
+          <span class="session-id">${escapeHtml(s.sessionId.slice(0, 8))}</span>
+          <span class="session-meta">${escapeHtml(s.workspace)} - ${escapeHtml(s.model)} - ${fmtMetric(value, metric)}</span>
+        </summary>
+        <div class="card session-expanded">
+          <div class="sub">${fmtUsd(s.costUsd)} - ${fmtTokens(s.totalTokens)} tok - cache ${(cacheRatio * 100).toFixed(0)}% - ran ${fmtDuration(s.lastAt - s.firstAt)}</div>
+          ${insight ? `<div class="insight">${escapeHtml(insight)}</div>` : ""}
+        </div>
+      </details>`;
+    })
+    .join("");
+  return `<div class="session-details-list">${rows}</div>`;
 }
 
-function buildActiveSessionsHtml(sessions: SessionAgg[], now: number, medianCost: number): string {
-  if (sessions.length === 0) return "";
-  return `<h2>Active now</h2>
-  <div class="cards">
-    ${sessions
-      .map((s) => {
-        const insight = sessionInsight(s, medianCost);
-        return `<div class="card active-session">
-          <div class="label"><span class="live-dot"></span>${escapeHtml(s.workspace)}</div>
-          <div class="value">${fmtUsd(s.costUsd)}</div>
-          <div class="sub">${escapeHtml(s.model)} - ${fmtTokens(s.totalTokens)} tok - running ${fmtDuration(now - s.firstAt)}</div>
-          ${insight ? `<div class="insight">${escapeHtml(insight)}</div>` : ""}
-        </div>`;
-      })
-      .join("")}
+function sessionCardHtml(s: SessionAgg, now: number, medianCost: number, live: boolean): string {
+  const insight = sessionInsight(s, medianCost);
+  const accent = sessionAccentColor(s.sessionId);
+  const dotClass = live ? "live-dot" : "idle-dot";
+  const status = live ? `running ${fmtDuration(now - s.firstAt)}` : `idle ${fmtDuration(now - s.lastAt)}`;
+  return `<div class="card active-session ${live ? "" : "idle-session"}" style="--session-accent:${accent}">
+    <div class="label"><span class="${dotClass}"></span>${escapeHtml(s.workspace)}</div>
+    <div class="value">${fmtUsd(s.costUsd)}</div>
+    <div class="sub">${escapeHtml(s.model)} - ${fmtTokens(s.totalTokens)} tok - ${status}</div>
+    ${insight ? `<div class="insight">${escapeHtml(insight)}</div>` : ""}
   </div>`;
 }
 
-function buildProjectCardsHtml(records: UsageRecord[], now: number, activeWindowMinutes: number, medianCost: number): string {
+// "Open sessions" covers both live (actively receiving turns) and idle
+// (gone quiet but not yet treated as closed) sessions - see isIdleSession -
+// split into two visually distinct groups so a quiet-but-open session in
+// another project doesn't get mistaken for one still running, or get lost
+// among fully closed history.
+function buildActiveSessionsHtml(live: SessionAgg[], idle: SessionAgg[], now: number, medianCost: number): string {
+  if (live.length === 0 && idle.length === 0) return "";
+  const liveHtml = live.length ? `<div class="cards">${live.map((s) => sessionCardHtml(s, now, medianCost, true)).join("")}</div>` : "";
+  const idleHtml = idle.length
+    ? `<h3>Idle - picks up where you left off</h3><div class="cards">${idle.map((s) => sessionCardHtml(s, now, medianCost, false)).join("")}</div>`
+    : "";
+  return `<h2>Open sessions</h2>${liveHtml}${idleHtml}`;
+}
+
+function buildProjectCardsHtml(records: UsageRecord[], now: number, activeWindowMinutes: number, idleWindowMinutes: number, medianCost: number, heading: string): string {
   const groups = groupSessionsByWorkspace(records, 8, 5);
   if (groups.length === 0) return "";
 
-  return `<h2>By project</h2>
+  return `<h2>${escapeHtml(heading)}</h2>
   <div class="project-cards">
     ${groups
       .map((g) => {
@@ -307,11 +467,14 @@ function buildProjectCardsHtml(records: UsageRecord[], now: number, activeWindow
         const rows = g.sessions
           .map((s) => {
             const active = isActiveSession(s, now, activeWindowMinutes);
+            const idle = !active && isIdleSession(s, now, activeWindowMinutes, idleWindowMinutes);
             const insight = sessionInsight(s, medianCost);
-            const duration = fmtDuration((active ? now : s.lastAt) - s.firstAt);
-            return `<div class="session-row">
+            const duration = active ? fmtDuration(now - s.firstAt) : idle ? `idle ${fmtDuration(now - s.lastAt)}` : fmtDuration(s.lastAt - s.firstAt);
+            const accent = active || idle ? sessionAccentColor(s.sessionId) : undefined;
+            const dot = active ? `<span class="live-dot"></span>` : idle ? `<span class="idle-dot"></span>` : "";
+            return `<div class="session-row" ${accent ? `style="--session-accent:${accent}"` : ""}>
               <div class="session-row-main">
-                ${active ? `<span class="live-dot"></span>` : ""}
+                ${dot}
                 <span class="session-id">${escapeHtml(s.sessionId.slice(0, 8))}</span>
                 <span class="session-meta">${escapeHtml(s.model)} - ${fmtUsd(s.costUsd)} - ${fmtTokens(s.totalTokens)} tok - ${duration}</span>
               </div>
@@ -365,29 +528,122 @@ function buildModelSpendOverTimeTable(rows: ModelSpendOverTime[]): string {
   </table>`;
 }
 
+interface TodayStats {
+  todayRecords: UsageRecord[];
+  todayCachePct: number | null;
+  // Only meaningful in the morning, before today's own numbers exist yet -
+  // see morningRecap. null the rest of the day, since "today so far" is
+  // already shown by the Today pace card and repeating it here would just
+  // be the same numbers twice.
+  morningRecap: string | null;
+}
+
+// Morning framing looks back at yesterday, since today's own numbers are
+// still empty and thus unhelpful as a headline; the Today pace card already
+// covers "today so far" for the rest of the day, so this is deliberately
+// the only place yesterday's figures appear - no second "today so far" line
+// duplicating the pace card.
+function computeTodayStats(records: UsageRecord[], now: Date, dayStart: Date, daily: PaceReading): TodayStats {
+  const todayRecords = records.filter((r) => new Date(r.timestamp) >= dayStart);
+  const todayInput = todayRecords.reduce((s, r) => s + r.inputTokens + r.cacheReadTokens, 0);
+  const todayCacheRead = todayRecords.reduce((s, r) => s + r.cacheReadTokens, 0);
+  const todayCachePct = todayInput > 0 ? (todayCacheRead / todayInput) * 100 : null;
+
+  let morningRecap: string | null = null;
+  if (now.getHours() < 12) {
+    const yesterdayStart = new Date(dayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayRecords = records.filter((r) => {
+      const ts = new Date(r.timestamp);
+      return ts >= yesterdayStart && ts < dayStart;
+    });
+    const yesterdaySpend = yesterdayRecords.reduce((s, r) => s + r.costUsd, 0);
+    const yesterdayTokens = yesterdayRecords.reduce((s, r) => s + tokenTotal(r), 0);
+    morningRecap = `Yesterday: ${fmtUsd(yesterdaySpend)}, ${fmtTokens(yesterdayTokens)} tokens.${daily.budget !== null ? ` Today's budget: ${fmtUsd(daily.budget)} available.` : " No daily budget set."}`;
+  }
+
+  return { todayRecords, todayCachePct, morningRecap };
+}
+
+function buildHistoryTabHtml(records: UsageRecord[], now: Date, medianCost: number, monthDays: number, dayStart: Date): string {
+  const periods: Period[] = ["week", "month", "all"];
+  const metrics: Metric[] = ["cost", "tokens", "cache"];
+
+  const periodRadios = periods.map((p) => `<input type="radio" name="period" id="period-${p}" class="toggle-input"${p === "week" ? " checked" : ""}>`).join("");
+  const metricRadios = metrics.map((m) => `<input type="radio" name="metric" id="metric-${m}" class="toggle-input"${m === "cost" ? " checked" : ""}>`).join("");
+  const periodBar = `<div class="toggle-bar">${periods.map((p) => `<label for="period-${p}" class="toggle-label">${escapeHtml(periodLabel(p, monthDays))}</label>`).join("")}</div>`;
+  const metricBar = `<div class="toggle-bar">${metrics.map((m) => `<label for="metric-${m}" class="toggle-label">${escapeHtml(METRIC_LABEL[m])}</label>`).join("")}</div>`;
+
+  const combos = periods
+    .flatMap((p) =>
+      metrics.map((m) => {
+        const trend = buildTrendSvg(periodBuckets(records, p, m, now, monthDays), `${periodLabel(p, monthDays)} ${METRIC_LABEL[m]} trend`, `pulseBarGrad-${p}-${m}`);
+        const sessions = topSessionsForPeriod(records, p, m, monthDays, now.getTime(), 10);
+        return `<div class="history-combo hc-${p}-${m}">
+          <h3>${escapeHtml(periodLabel(p, monthDays))} trend - ${escapeHtml(METRIC_LABEL[m])}</h3>
+          ${trend}
+          <h3>Top sessions</h3>
+          ${buildExpandableSessionsTable(sessions, m, medianCost)}
+        </div>`;
+      })
+    )
+    .join("");
+
+  return `${periodRadios}${metricRadios}
+  ${periodBar}
+  ${metricBar}
+  <div class="history-content">${combos}</div>
+
+  <h2>Spend by model over time</h2>
+  ${buildModelSpendOverTimeTable(modelSpendOverTime(records, now, dayStart))}
+
+  <h2>By tool (all time)</h2>
+  ${buildBreakdownTable(groupByKey(records, "tool"), "Tool")}
+
+  <h2>By model (all time)</h2>
+  ${buildBreakdownTable(groupByKey(records, "model"), "Model")}`;
+}
+
 export interface PanelInput {
   records: UsageRecord[];
   budget: Budget;
   storePath: string;
   claudeDetected: boolean;
+  clineDetected: boolean;
+  codexDetected: boolean;
   brandMarkDataUri: string;
   trendDays: number;
   activeSessionWindowMinutes: number;
+  idleSessionWindowMinutes: number;
 }
 
 export function renderPanelHtml(input: PanelInput): string {
-  const { records, budget, storePath, claudeDetected, brandMarkDataUri, trendDays, activeSessionWindowMinutes } = input;
+  const {
+    records,
+    budget,
+    storePath,
+    claudeDetected,
+    clineDetected,
+    codexDetected,
+    brandMarkDataUri,
+    trendDays,
+    activeSessionWindowMinutes,
+    idleSessionWindowMinutes,
+  } = input;
   const now = new Date();
   const { daily, monthly } = computePace(records, budget, now);
   const { dayStart, monthStart } = periodBounds(now, budget.periodStartDay);
   const dailyTokens = records.filter((r) => new Date(r.timestamp) >= dayStart).reduce((s, r) => s + tokenTotal(r), 0);
   const monthlyTokens = records.filter((r) => new Date(r.timestamp) >= monthStart).reduce((s, r) => s + tokenTotal(r), 0);
   const active = activeSessions(records, activeSessionWindowMinutes, now.getTime());
+  const idle = idleSessions(records, activeSessionWindowMinutes, idleSessionWindowMinutes, now.getTime());
   const medianCost = medianSessionCost(records);
 
-  const emptyMessage = claudeDetected
-    ? "No usage recorded yet. Claude Code sessions are picked up automatically as you use them - or log a manual entry for other tools."
-    : "No supported tools detected on this machine (Claude Code wasn't found at ~/.claude/projects). Use <b>Vector AI Pulse: Log Manual Entry...</b> to track usage from other tools.";
+  const detectedTools = [claudeDetected && "Claude Code", clineDetected && "Cline", codexDetected && "Codex"].filter((t): t is string => Boolean(t));
+  const emptyMessage =
+    detectedTools.length > 0
+      ? `No usage recorded yet. ${detectedTools.join(", ")} sessions are picked up automatically as you use them - or log a manual entry for other tools.`
+      : "No supported tools detected on this machine (checked Claude Code, Cline, and Codex's local session data). Use <b>Vector AI Pulse: Log Manual Entry...</b> to track usage from other tools.";
 
   if (records.length === 0) {
     return shellHtml(
@@ -409,16 +665,18 @@ export function renderPanelHtml(input: PanelInput): string {
   const daysLeftInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
   const recommendation = recommendedAction(daily, monthly, records);
 
-  return shellHtml(
-    `
-    ${buildActiveSessionsHtml(active, now.getTime(), medianCost)}
+  const { todayRecords, todayCachePct, morningRecap } = computeTodayStats(records, now, dayStart, daily);
+
+  const liveTab = `
+    ${buildActiveSessionsHtml(active, idle, now.getTime(), medianCost)}
     ${budgetPrompt}
     <div class="card recommendation sev-${recommendation.severity}">${escapeHtml(recommendation.text)}</div>
+    ${morningRecap ? `<p class="recap">${escapeHtml(morningRecap)}</p>` : ""}
     <div class="cards">
       <div class="card">
         <div class="label">Today</div>
         <div class="value">${fmtUsd(daily.spend)}${daily.budget !== null ? ` / ${fmtUsd(daily.budget)}` : ""}</div>
-        <div class="sub">${fmtTokens(dailyTokens)} tokens${daily.projected !== null ? ` - projected ${fmtUsd(daily.projected)}` : ""}</div>
+        <div class="sub">${fmtTokens(dailyTokens)} tokens${todayCachePct !== null ? ` - cache ${todayCachePct.toFixed(0)}%` : ""}${daily.projected !== null ? ` - projected ${fmtUsd(daily.projected)}` : ""}</div>
       </div>
       <div class="card">
         <div class="label">This period</div>
@@ -426,30 +684,26 @@ export function renderPanelHtml(input: PanelInput): string {
         <div class="sub">${fmtTokens(monthlyTokens)} tokens${monthly.projected !== null ? ` - projected ${fmtUsd(monthly.projected)}, ${daysLeftInMonth}d left` : ""}</div>
       </div>
     </div>
+    ${buildProjectCardsHtml(todayRecords, now.getTime(), activeSessionWindowMinutes, idleSessionWindowMinutes, medianCost, "By project today")}`;
 
-    ${buildProjectCardsHtml(records, now.getTime(), activeSessionWindowMinutes, medianCost)}
+  const pastTab = buildHistoryTabHtml(records, now, medianCost, trendDays, dayStart);
 
-    <h2>Spend by model over time</h2>
-    ${buildModelSpendOverTimeTable(modelSpendOverTime(records, now, dayStart))}
-
-    <h2>Last ${trendDays} days</h2>
-    ${buildTrendSvg(dailyTrend(records, trendDays))}
-
-    <h2>By tool (all time)</h2>
-    ${buildBreakdownTable(groupByKey(records, "tool"), "Tool")}
-
-    <h2>By model (all time)</h2>
-    ${buildBreakdownTable(groupByKey(records, "model"), "Model")}
-
-    <h2>Top 5 most expensive sessions (all time)</h2>
-    ${buildTopSessionsTable(topSessions(records, 5))}
+  const tabs = `
+    <input type="radio" name="tab" id="tab-live" class="tab-input" checked>
+    <input type="radio" name="tab" id="tab-past" class="tab-input">
+    <div class="tab-bar">
+      <label for="tab-live" class="tab-label">Live/Recent</label>
+      <label for="tab-past" class="tab-label">Past</label>
+    </div>
+    <div class="tab-panel tab-panel-live">${liveTab}</div>
+    <div class="tab-panel tab-panel-past">${pastTab}</div>
 
     <h2>Your data</h2>
     <p>${records.length} records, stored locally, human-readable, never transmitted:</p>
     <p class="store-path">${escapeHtml(storePath)}</p>
-  `,
-    brandMarkDataUri
-  );
+  `;
+
+  return shellHtml(tabs, brandMarkDataUri);
 }
 
 function shellHtml(body: string, brandMarkDataUri: string): string {
@@ -463,7 +717,7 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
     --pulse-teal: ${BRAND.accentTeal};
     --pulse-amber: ${BRAND.accentAmber};
   }
-  body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); margin: 0; padding: 0 16px 16px; }
+  body { font-family: ${BRAND.bodyFont}; color: var(--vscode-foreground); margin: 0; padding: 0 16px 16px; }
   .brand-header {
     display: flex;
     align-items: center;
@@ -474,7 +728,8 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
   }
   .brand-header .brand-mark { flex: none; line-height: 0; }
   .brand-header .brand-title {
-    font-size: 1.25em;
+    font-family: ${BRAND.headlineFont};
+    font-size: 1.3em;
     font-weight: 700;
     background: linear-gradient(90deg, var(--pulse-teal), var(--pulse-amber));
     -webkit-background-clip: text;
@@ -484,10 +739,16 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
   }
   .brand-header .brand-subtitle { font-size: 0.8em; color: ${BRAND.subtleOnDark}; margin-top: 2px; }
   h2 { font-size: 1em; margin-top: 20px; opacity: 0.9; }
-  .cards { display: flex; gap: 12px; margin-bottom: 16px; }
+  h3 { font-size: 0.85em; margin-top: 12px; opacity: 0.75; font-weight: 600; }
+  /* Numeric content (spend, tokens, table figures) stays on the sans stack
+     with tabular figures - a serif's proportional old-style digits are
+     exactly what slows down scanning a dense dashboard, so brand serif is
+     confined to the header logotype above and nowhere else. */
+  .value, .card .sub, table, .session-meta { font-variant-numeric: tabular-nums; }
+  .cards { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
   .card { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 10px 14px; min-width: 160px; }
   .card .label { opacity: 0.7; font-size: 0.85em; }
-  .card .value { font-size: 1.4em; font-weight: 600; }
+  .card .value { font-size: 1.4em; font-weight: 700; }
   .card .sub { font-size: 0.8em; opacity: 0.7; }
   .recommendation {
     min-width: unset;
@@ -498,15 +759,27 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
   .recommendation.sev-amber { border-left-color: #cca700; }
   .recommendation.sev-red { border-left-color: var(--vscode-errorForeground, #f14c4c); }
   .recommendation.sev-neutral { border-left-color: var(--vscode-panel-border); }
-  .active-session { border-color: var(--pulse-teal); }
-  .live-dot {
+  /* Live/idle cards each carry their own --session-accent (a stable hash
+     of sessionId, see sessionAccentColor) so simultaneous sessions in
+     different projects are distinguishable from each other, not just from
+     closed sessions - which stay on the plain neutral panel-border below. */
+  .active-session { border-color: var(--session-accent, var(--pulse-teal)); border-width: 1.5px; }
+  .idle-session { opacity: 0.85; }
+  .live-dot, .idle-dot {
     display: inline-block;
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--pulse-teal);
     margin-right: 5px;
+  }
+  .live-dot {
+    background: var(--session-accent, var(--pulse-teal));
     animation: pulse-dot 1.6s ease-in-out infinite;
+  }
+  .idle-dot {
+    background: transparent;
+    border: 1.5px solid var(--session-accent, var(--pulse-teal));
+    opacity: 0.7;
   }
   @keyframes pulse-dot {
     0%, 100% { opacity: 1; }
@@ -520,7 +793,7 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
     padding-left: 6px;
   }
   .project-cards { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-  .project-card { min-width: unset; }
+  .project-card { min-width: unset; border-color: var(--vscode-panel-border); }
   .project-card .label { font-weight: 600; opacity: 1; font-size: 0.95em; }
   .session-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
   .session-row { border-top: 1px solid var(--vscode-panel-border); padding-top: 6px; }
@@ -531,7 +804,65 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
   th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--vscode-panel-border); font-size: 0.9em; }
   .hint, .empty { opacity: 0.8; font-style: italic; }
   .store-path { opacity: 0.6; font-size: 0.8em; word-break: break-all; }
+  .recap { opacity: 0.9; }
   svg { display: block; }
+
+  /* Zero-JS tabs (Live/Recent, Past) and, inside Past, the period and
+     metric toggles: hidden radio inputs + label[for] buttons + sibling
+     selectors to show/hide content. No script-src needed - default-src
+     'none' stays exactly as strict as it already was. */
+  .tab-input, .toggle-input { position: absolute; opacity: 0; pointer-events: none; }
+  .tab-bar, .toggle-bar { display: flex; gap: 4px; margin-bottom: 12px; }
+  .toggle-bar { margin-bottom: 8px; }
+  .tab-label, .toggle-label {
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    opacity: 0.65;
+    border: 1px solid transparent;
+  }
+  .tab-label { font-size: 0.9em; font-weight: 600; padding: 6px 14px; }
+  .toggle-label { padding: 3px 10px; border: 1px solid var(--vscode-panel-border); }
+  .tab-panel, .history-combo { display: none; }
+  #tab-live:checked ~ .tab-panel-live,
+  #tab-past:checked ~ .tab-panel-past { display: block; }
+  #tab-live:checked ~ .tab-bar .tab-label[for="tab-live"],
+  #tab-past:checked ~ .tab-bar .tab-label[for="tab-past"] {
+    opacity: 1;
+    background: var(--vscode-textBlockQuote-background);
+    border-color: var(--pulse-teal);
+  }
+  #period-week:checked ~ .toggle-bar .toggle-label[for="period-week"],
+  #period-month:checked ~ .toggle-bar .toggle-label[for="period-month"],
+  #period-all:checked ~ .toggle-bar .toggle-label[for="period-all"],
+  #metric-cost:checked ~ .toggle-bar .toggle-label[for="metric-cost"],
+  #metric-tokens:checked ~ .toggle-bar .toggle-label[for="metric-tokens"],
+  #metric-cache:checked ~ .toggle-bar .toggle-label[for="metric-cache"] {
+    opacity: 1;
+    background: var(--vscode-textBlockQuote-background);
+    border-color: var(--pulse-amber);
+  }
+  #period-week:checked ~ #metric-cost:checked ~ .history-content .hc-week-cost,
+  #period-week:checked ~ #metric-tokens:checked ~ .history-content .hc-week-tokens,
+  #period-week:checked ~ #metric-cache:checked ~ .history-content .hc-week-cache,
+  #period-month:checked ~ #metric-cost:checked ~ .history-content .hc-month-cost,
+  #period-month:checked ~ #metric-tokens:checked ~ .history-content .hc-month-tokens,
+  #period-month:checked ~ #metric-cache:checked ~ .history-content .hc-month-cache,
+  #period-all:checked ~ #metric-cost:checked ~ .history-content .hc-all-cost,
+  #period-all:checked ~ #metric-tokens:checked ~ .history-content .hc-all-tokens,
+  #period-all:checked ~ #metric-cache:checked ~ .history-content .hc-all-cache {
+    display: block;
+  }
+
+  /* Expandable session rows (<details>/<summary>, also native/scriptless). */
+  .session-details-list { display: flex; flex-direction: column; gap: 4px; }
+  .session-details { border-bottom: 1px solid var(--vscode-panel-border); padding: 4px 0; }
+  .session-details summary { cursor: pointer; display: flex; gap: 8px; align-items: baseline; font-size: 0.85em; list-style: none; }
+  .session-details summary::-webkit-details-marker { display: none; }
+  .session-details summary::before { content: "\\25b8"; opacity: 0.6; margin-right: 2px; }
+  .session-details[open] summary::before { content: "\\25be"; }
+  .session-expanded { margin-top: 6px; min-width: unset; }
 </style>
 </head>
 <body>

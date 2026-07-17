@@ -2,7 +2,7 @@
   "name": "vector-ai-pulse",
   "displayName": "Vector AI Pulse",
   "description": "In-editor budget pacing and efficiency insight for metered, agentic AI coding tools (Claude Code and peers) — zero network calls, local-only.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "iSattva",
   "icon": "media/icon.png",
   "repository": {
@@ -26,6 +26,8 @@
   ],
   "keywords": [
     "claude code",
+    "cline",
+    "codex",
     "ai budget",
     "cost tracking",
     "token usage",
@@ -97,6 +99,14 @@
             "minimum": 1,
             "maximum": 60,
             "description": "A Claude Code session shows as \"active\" in the Pulse panel if it had activity within this many minutes."
+          },
+          "vector.aiPulse.idleSessionWindowMinutes": {
+            "type": "number",
+            "order": 5,
+            "default": 60,
+            "minimum": 5,
+            "maximum": 240,
+            "description": "A Claude Code session past the active window still shows as \"idle\" (not yet closed) if it had activity within this many minutes. Past this, it's treated as closed."
           }
         }
       }
