@@ -2,7 +2,7 @@
   "name": "vector-ai-pulse",
   "displayName": "Vector AI Pulse",
   "description": "In-editor budget pacing and efficiency insight for metered, agentic AI coding tools (Claude Code and peers) — zero network calls, local-only.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "iSattva",
   "icon": "media/icon.png",
   "repository": {
