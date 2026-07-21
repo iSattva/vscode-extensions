@@ -167,6 +167,18 @@ function topSessionsForPeriod(records: UsageRecord[], period: Period, metric: Me
     .slice(0, n);
 }
 
+// Per-model sub-totals within a session, so a mid-session model switch (e.g.
+// Opus -> Sonnet) is visible instead of silently collapsed into whichever
+// model happened to write the last record.
+export interface ModelUsageAgg {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreateTokens: number;
+  costUsd: number;
+  lastAt: number;
+}
+
 export interface SessionAgg {
   sessionId: string;
   tool: string;
@@ -178,6 +190,7 @@ export interface SessionAgg {
   cacheReadTokens: number;
   firstAt: number;
   lastAt: number;
+  models: Map<string, ModelUsageAgg>;
 }
 
 export function aggregateSessions(records: UsageRecord[]): Map<string, SessionAgg> {
@@ -185,45 +198,89 @@ export function aggregateSessions(records: UsageRecord[]): Map<string, SessionAg
   for (const r of records) {
     const ts = Date.parse(r.timestamp);
     const existing = map.get(r.sessionId);
-    if (existing) {
-      existing.costUsd += r.costUsd;
-      existing.totalTokens += tokenTotal(r);
-      existing.inputTokens += r.inputTokens;
-      existing.cacheReadTokens += r.cacheReadTokens;
-      existing.firstAt = Math.min(existing.firstAt, ts);
-      existing.lastAt = Math.max(existing.lastAt, ts);
-      existing.model = r.model; // last-seen model for the session
-    } else {
-      map.set(r.sessionId, {
+    const session: SessionAgg =
+      existing ??
+      ({
         sessionId: r.sessionId,
         tool: r.tool,
         model: r.model,
         workspace: r.workspace,
-        costUsd: r.costUsd,
-        totalTokens: tokenTotal(r),
-        inputTokens: r.inputTokens,
-        cacheReadTokens: r.cacheReadTokens,
+        costUsd: 0,
+        totalTokens: 0,
+        inputTokens: 0,
+        cacheReadTokens: 0,
         firstAt: ts,
         lastAt: ts,
-      });
+        models: new Map<string, ModelUsageAgg>(),
+      } satisfies SessionAgg);
+    session.costUsd += r.costUsd;
+    session.totalTokens += tokenTotal(r);
+    session.inputTokens += r.inputTokens;
+    session.cacheReadTokens += r.cacheReadTokens;
+    session.firstAt = Math.min(session.firstAt, ts);
+    session.lastAt = Math.max(session.lastAt, ts);
+
+    const modelBucket = session.models.get(r.model) ?? {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreateTokens: 0,
+      costUsd: 0,
+      lastAt: ts,
+    };
+    modelBucket.inputTokens += r.inputTokens;
+    modelBucket.outputTokens += r.outputTokens;
+    modelBucket.cacheReadTokens += r.cacheReadTokens;
+    modelBucket.cacheCreateTokens += r.cacheCreateTokens;
+    modelBucket.costUsd += r.costUsd;
+    modelBucket.lastAt = Math.max(modelBucket.lastAt, ts);
+    session.models.set(r.model, modelBucket);
+
+    map.set(r.sessionId, session);
+  }
+  // "Current" model = whichever model's bucket was written to most recently,
+  // determined once records are fully merged rather than trusting log order.
+  for (const session of map.values()) {
+    let bestLastAt = -Infinity;
+    for (const [model, bucket] of session.models) {
+      if (bucket.lastAt > bestLastAt) {
+        bestLastAt = bucket.lastAt;
+        session.model = model;
+      }
     }
   }
   return map;
 }
 
-function isActiveSession(s: SessionAgg, now: number, windowMinutes: number): boolean {
-  return s.tool === "claude-code" && now - s.lastAt <= windowMinutes * 60_000;
+// Current model first, then the rest by cost share descending - so the
+// model actually driving the session right now reads at a glance, and the
+// runners-up are ranked by how much they've actually cost, not recency.
+function sessionModelRows(s: SessionAgg): { model: string; bucket: ModelUsageAgg; cacheRatio: number }[] {
+  return [...s.models.entries()]
+    .sort(([aModel, a], [bModel, b]) => {
+      if (aModel === s.model) return -1;
+      if (bModel === s.model) return 1;
+      return b.costUsd - a.costUsd;
+    })
+    .map(([model, bucket]) => ({
+      model,
+      bucket,
+      cacheRatio: bucket.inputTokens + bucket.cacheReadTokens > 0 ? bucket.cacheReadTokens / (bucket.inputTokens + bucket.cacheReadTokens) : 0,
+    }));
 }
 
-// Claude Code's JSONL log never emits an explicit "session ended" event -
-// only a last-write timestamp - so a session that's gone quiet past the
-// active window isn't necessarily over: the dev may just be reading output
-// or got pulled away. Idle covers that gap (active window .. idle window)
-// so it reads as "still open, just quiet" rather than being lumped in with
-// sessions closed weeks ago. Only past the idle window do we treat it as
-// genuinely closed (and, separately, fire the session-end nudge).
+function isActiveSession(s: SessionAgg, now: number, windowMinutes: number): boolean {
+  return now - s.lastAt <= windowMinutes * 60_000;
+}
+
+// None of the tracked tools' local logs emit an explicit "session ended"
+// event - only a last-write timestamp - so a session that's gone quiet past
+// the active window isn't necessarily over: the dev may just be reading
+// output or got pulled away. Idle covers that gap (active window .. idle
+// window) so it reads as "still open, just quiet" rather than being lumped
+// in with sessions closed weeks ago. Only past the idle window do we treat
+// it as genuinely closed (and, separately, fire the session-end nudge).
 function isIdleSession(s: SessionAgg, now: number, activeWindowMinutes: number, idleWindowMinutes: number): boolean {
-  if (s.tool !== "claude-code") return false;
   const sinceLast = now - s.lastAt;
   return sinceLast > activeWindowMinutes * 60_000 && sinceLast <= idleWindowMinutes * 60_000;
 }
@@ -263,6 +320,12 @@ export function sessionInsight(s: SessionAgg, medianCost: number): string | null
   }
   if (/opus/i.test(s.model) && medianCost > 0 && s.costUsd < medianCost * 0.5) {
     return "Premium model used for a below-typical-cost session - a lighter model may have been enough.";
+  }
+  if (s.models.size > 1) {
+    const runnerUp = sessionModelRows(s)[1];
+    if (runnerUp) {
+      return `Switched from ${runnerUp.model} to ${s.model} mid-session - worth checking the new model matches the task's complexity.`;
+    }
   }
   return null;
 }
@@ -402,6 +465,44 @@ function buildBreakdownTable(rows: [string, AggregateRow][], labelHeader: string
   </table>`;
 }
 
+// Per-model breakdown table used on live/idle cards: current model pinned
+// to the top row (see sessionModelRows), a Total row only when the session
+// actually spans more than one model - repeating the same single row as a
+// "total" would just be noise.
+function modelTableHtml(s: SessionAgg): string {
+  const rows = sessionModelRows(s);
+  const rowsHtml = rows
+    .map(
+      ({ model, bucket, cacheRatio }) =>
+        `<tr${model === s.model ? ' class="current-model"' : ""}><td title="${escapeHtml(model)}">${escapeHtml(model)}</td><td>${fmtTokens(bucket.inputTokens)}</td><td>${fmtTokens(bucket.outputTokens)}</td><td>${(cacheRatio * 100).toFixed(0)}%</td><td>${fmtUsd(bucket.costUsd)}</td></tr>`
+    )
+    .join("");
+  const totalCacheRatio = s.inputTokens + s.cacheReadTokens > 0 ? s.cacheReadTokens / (s.inputTokens + s.cacheReadTokens) : 0;
+  const totalRow =
+    rows.length > 1
+      ? `<tr class="total-row"><td>Total</td><td>${fmtTokens(rows.reduce((sum, r) => sum + r.bucket.inputTokens, 0))}</td><td>${fmtTokens(
+          rows.reduce((sum, r) => sum + r.bucket.outputTokens, 0)
+        )}</td><td>${(totalCacheRatio * 100).toFixed(0)}%</td><td>${fmtUsd(s.costUsd)}</td></tr>`
+      : "";
+  return `<table class="model-table">
+    <tr><th>Model</th><th>In</th><th>Out</th><th>Cache</th><th>Cost</th></tr>
+    ${rowsHtml}${totalRow}
+  </table>`;
+}
+
+// Compact stand-in for the full model table on past sessions, where up to
+// 10 rows per period x metric combo are listed at once - a per-model cost
+// share pill reads at a glance without the table's vertical weight, and is
+// omitted entirely for single-model sessions (the common case).
+function modelSharePillsHtml(s: SessionAgg): string {
+  if (s.models.size <= 1) return "";
+  const total = s.costUsd || 1;
+  const pills = sessionModelRows(s)
+    .map(({ model, bucket }) => `<span class="model-pill">${escapeHtml(model)} ${((bucket.costUsd / total) * 100).toFixed(0)}%</span>`)
+    .join("");
+  return `<div class="model-pills">${pills}</div>`;
+}
+
 // Zero-JS expandable row: <details>/<summary> is native HTML, needs no
 // script and works fine under the panel's default-src 'none' CSP - clicking
 // a session reveals the same card layout used for live/idle sessions
@@ -411,7 +512,7 @@ function buildExpandableSessionsTable(sessions: SessionAgg[], metric: Metric, me
   const rows = sessions
     .map((s) => {
       const value = metricValue({ costUsd: s.costUsd, totalTokens: s.totalTokens, inputTokens: s.inputTokens, cacheReadTokens: s.cacheReadTokens }, metric);
-      const cacheRatio = s.inputTokens > 0 ? s.cacheReadTokens / s.inputTokens : 0;
+      const cacheRatio = s.inputTokens + s.cacheReadTokens > 0 ? s.cacheReadTokens / (s.inputTokens + s.cacheReadTokens) : 0;
       const insight = sessionInsight(s, medianCost);
       return `<details class="session-details">
         <summary>
@@ -420,6 +521,7 @@ function buildExpandableSessionsTable(sessions: SessionAgg[], metric: Metric, me
         </summary>
         <div class="card session-expanded">
           <div class="sub">${fmtUsd(s.costUsd)} - ${fmtTokens(s.totalTokens)} tok - cache ${(cacheRatio * 100).toFixed(0)}% - ran ${fmtDuration(s.lastAt - s.firstAt)}</div>
+          ${modelSharePillsHtml(s)}
           ${insight ? `<div class="insight">${escapeHtml(insight)}</div>` : ""}
         </div>
       </details>`;
@@ -434,9 +536,13 @@ function sessionCardHtml(s: SessionAgg, now: number, medianCost: number, live: b
   const dotClass = live ? "live-dot" : "idle-dot";
   const status = live ? `running ${fmtDuration(now - s.firstAt)}` : `idle ${fmtDuration(now - s.lastAt)}`;
   return `<div class="card active-session ${live ? "" : "idle-session"}" style="--session-accent:${accent}">
-    <div class="label"><span class="${dotClass}"></span>${escapeHtml(s.workspace)}</div>
-    <div class="value">${fmtUsd(s.costUsd)}</div>
-    <div class="sub">${escapeHtml(s.model)} - ${fmtTokens(s.totalTokens)} tok - ${status}</div>
+    <div class="label">
+      <span class="${dotClass}"></span><span class="workspace-name" title="${escapeHtml(s.workspace)}">${escapeHtml(s.workspace)}</span>
+      <span class="session-id">${escapeHtml(s.sessionId.slice(0, 8))}</span>
+      <span class="tool-badge">${escapeHtml(s.tool)}</span>
+    </div>
+    <div class="sub">${status}</div>
+    ${modelTableHtml(s)}
     ${insight ? `<div class="insight">${escapeHtml(insight)}</div>` : ""}
   </div>`;
 }
@@ -763,8 +869,20 @@ function shellHtml(body: string, brandMarkDataUri: string): string {
      of sessionId, see sessionAccentColor) so simultaneous sessions in
      different projects are distinguishable from each other, not just from
      closed sessions - which stay on the plain neutral panel-border below. */
-  .active-session { border-color: var(--session-accent, var(--pulse-teal)); border-width: 1.5px; }
+  .active-session { border-color: var(--session-accent, var(--pulse-teal)); border-width: 1.5px; max-width: 420px; }
   .idle-session { opacity: 0.85; }
+  .active-session .label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .active-session .label .workspace-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  .active-session .label .session-id { opacity: 0.55; font-weight: normal; font-family: var(--vscode-editor-font-family, monospace); font-size: 0.9em; }
+  .active-session .label .tool-badge { font-size: 0.78em; font-weight: normal; opacity: 0.8; padding: 1px 6px; border: 1px solid var(--vscode-panel-border); border-radius: 10px; }
+  .model-table { margin-top: 8px; font-size: 0.9em; width: 100%; table-layout: fixed; }
+  .model-table th, .model-table td { text-align: left; padding: 2px 8px 2px 0; border-bottom: none; }
+  .model-table th { opacity: 0.6; font-weight: 600; }
+  .model-table td:first-child, .model-table th:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .model-table tr.current-model td:first-child { font-weight: 600; }
+  .model-table tr.total-row td { border-top: 1px solid var(--vscode-panel-border); font-weight: 600; opacity: 0.85; padding-top: 4px; }
+  .model-pills { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .model-pill { font-size: 0.8em; opacity: 0.85; padding: 1px 6px; border: 1px solid var(--vscode-panel-border); border-radius: 10px; }
   .live-dot, .idle-dot {
     display: inline-block;
     width: 7px;

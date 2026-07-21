@@ -269,7 +269,7 @@ async function resetData(): Promise<void> {
   store.fileOffsets = {};
   store.nudgeLog = [];
   store.budget = budget;
-  saveStore(store);
+  saveStore(store, { merge: false });
   refreshAll();
   vscode.window.showInformationMessage("Vector AI Pulse: all usage data reset.");
 }

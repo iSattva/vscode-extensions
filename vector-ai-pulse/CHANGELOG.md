@@ -2,6 +2,12 @@
 
 ## 0.0.2 — Unreleased
 
+Session cards now show a per-model breakdown instead of a single last-seen model: a mid-session model switch (e.g. Opus to Sonnet) is tracked per model, with the current model pinned to the top of an in/out-tokens/cache/cost table and a total row when a session spans more than one model. Card header now shows the project name, a short session ID, and a tool badge (Claude Code / Cline / Codex). Past-session rows show a per-model cost-share pill on expand instead of the full table, keeping the top-sessions list scannable.
+
+Fixed a cache-hit-ratio bug that could show percentages well over 100% (e.g. on long sessions where cache reads vastly outnumber new input tokens) - the ratio is now correctly cache reads as a share of total input context.
+
+Session cards are now capped to a sane max width and truncate long workspace paths/model names (full value on hover) instead of stretching to fit; card and table font sizes bumped to match the rest of the panel.
+
 Automatic tracking extended beyond Claude Code: Cline (reads `taskHistory.json` from its own globalStorage) and Codex CLI (reads `$CODEX_HOME/sessions/**/rollout-*.jsonl`) are now detected and ingested the same way, no manual entry needed. Collector internals split into a shared byte-offset/directory-walk module plus one file per tool, so each tool's parsing is isolated and a bad assumption in one can't affect another's data.
 
 Panel reimagined around two tabs instead of one flat scroll: **Live/Recent** (open sessions - live and idle, recommendation, today's and this period's pace cards, today's by-project breakdown, cache % folded into the pace card instead of a separate recap line) and **Past** (period toggle - week/last-N-days/all-time - and metric toggle - cost/tokens/cache hit % - driving one trend chart and one expandable top-sessions list, replacing four separate fixed tables). All zero-JS: tabs and toggles are radio-input/sibling-selector CSS, expandable session rows are native `<details>`/`<summary>` - webview CSP and `enableScripts: false` are unchanged.

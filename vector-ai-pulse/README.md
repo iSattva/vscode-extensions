@@ -19,8 +19,8 @@ Ambient budget pacing for metered, agentic AI coding tools (Claude Code and peer
 - Tracks your daily/monthly AI spend against a budget you set.
 - Shows a glanceable status bar cue — green/amber/red pace state — so you know if you're on track without leaving the editor.
 - Click the cue to open the Pulse panel, split into two tabs:
-  - **Live/Recent** — open sessions (live and idle, each session's own accent color), a rule-based recommendation, today's and this period's pace against budget, and today's activity grouped by project.
-  - **Past** — a period toggle (week / last-N-days / all time) and metric toggle (cost / tokens / cache hit %) driving one trend chart and an expandable top-sessions list, plus all-time spend-by-model-over-time, by-tool, and by-model breakdowns.
+  - **Live/Recent** — open sessions (live and idle, each session's own accent color, project name + session ID + tool badge in the header), a per-model breakdown table when a session spans more than one model (current model pinned to the top, with in/out tokens, cache hit %, and cost per model, plus a total row), a rule-based recommendation, today's and this period's pace against budget, and today's activity grouped by project.
+  - **Past** — a period toggle (week / last-N-days / all time) and metric toggle (cost / tokens / cache hit %) driving one trend chart and an expandable top-sessions list (multi-model sessions show a per-model cost-share pill on expand), plus all-time spend-by-model-over-time, by-tool, and by-model breakdowns.
 - A native notification nudges you once a session goes quiet long enough to count as closed, only when there's something actionable to say (capped at 3/day).
 - Manual entry for tools that don't expose per-token usage yet, plus CSV export for your own records.
 

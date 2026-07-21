@@ -31,7 +31,14 @@ interface TokenUsage {
 }
 
 function defaultFileState(): CodexFileState {
-  return { model: "unknown", cumulativeInputTokens: 0, cumulativeCachedInputTokens: 0, cumulativeOutputTokens: 0, cumulativeReasoningTokens: 0 };
+  return {
+    model: "unknown",
+    workspace: "unknown",
+    cumulativeInputTokens: 0,
+    cumulativeCachedInputTokens: 0,
+    cumulativeOutputTokens: 0,
+    cumulativeReasoningTokens: 0,
+  };
 }
 
 // The exact rollout JSONL schema isn't officially documented by OpenAI and
@@ -41,6 +48,18 @@ function defaultFileState(): CodexFileState {
 function extractModel(entry: any): string | undefined {
   const model = entry?.payload?.model ?? entry?.model;
   return typeof model === "string" ? model : undefined;
+}
+
+// session_meta and turn_context lines carry the session's actual working
+// directory - this is the project the Codex session ran in, which is
+// unrelated to whatever workspace the VS Code window hosting this panel
+// happens to have open. Split on both separators since a rollout file can
+// in principle be produced on either Windows or POSIX.
+function extractWorkspaceName(entry: any): string | undefined {
+  const cwd = entry?.payload?.cwd;
+  if (typeof cwd !== "string" || !cwd) return undefined;
+  const parts = cwd.split(/[\\/]/).filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : undefined;
 }
 
 function extractTokenCountInfo(entry: any): { last?: TokenUsage; total?: TokenUsage } | undefined {
@@ -59,7 +78,6 @@ export function processCodexFile(store: Store, pricingConfig: Record<string, Mod
 
   const state = store.codexFileState[filePath] ?? defaultFileState();
   const sessionId = path.basename(filePath, ".jsonl");
-  const workspace = vscode.workspace.workspaceFolders?.[0]?.name ?? "unknown";
   let found = 0;
 
   for (const line of lines) {
@@ -72,6 +90,9 @@ export function processCodexFile(store: Store, pricingConfig: Record<string, Mod
 
     const model = extractModel(entry);
     if (model) state.model = model;
+
+    const workspaceName = extractWorkspaceName(entry);
+    if (workspaceName) state.workspace = workspaceName;
 
     const tokenCount = extractTokenCountInfo(entry);
     if (!tokenCount) continue;
@@ -110,7 +131,7 @@ export function processCodexFile(store: Store, pricingConfig: Record<string, Mod
       timestamp: typeof entry.timestamp === "string" && !Number.isNaN(Date.parse(entry.timestamp)) ? entry.timestamp : new Date().toISOString(),
       tool: "codex",
       model: state.model,
-      workspace,
+      workspace: state.workspace,
       sessionId,
       inputTokens: deltaInput,
       outputTokens,
