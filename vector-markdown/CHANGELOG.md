@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Fix: `customThemePath`, `branding.logoPath`, and `export.outputFolder` are now restricted settings - a malicious workspace's own `.vscode/settings.json` can no longer set these to read/write arbitrary local files without an explicit Workspace Trust prompt.
+- Fix: closed a symlink bypass of the image-path containment check (`imageInliner.ts`) - a tracked symlink inside the document's directory pointing outside it is now rejected instead of transparently followed.
+
 ## 0.1.3
 
 - Fix: custom theme CSS (`vector.markdown.customThemePath`) was embedded unescaped into exported/rendered HTML, letting a crafted stylesheet break out of its `<style>` tag and inject live script.

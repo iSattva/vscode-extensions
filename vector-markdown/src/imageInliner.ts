@@ -50,6 +50,23 @@ export function inlineRelativeImages(html: string, baseDir: string): string {
     if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
       return match;
     }
+    // The check above is lexical only, so a symlink *inside* baseDir whose
+    // target points outside it (e.g. a tracked symlink in a malicious repo)
+    // would pass it and still get transparently followed by fs.readFileSync
+    // below - defeating the containment check entirely. Re-verify with the
+    // real, symlink-resolved path before reading.
+    let realResolved: string;
+    let realBaseDir: string;
+    try {
+      realResolved = fs.realpathSync(resolved);
+      realBaseDir = fs.realpathSync(baseDir);
+    } catch {
+      return match;
+    }
+    const realBaseDirWithSep = realBaseDir.endsWith(path.sep) ? realBaseDir : realBaseDir + path.sep;
+    if (!realResolved.startsWith(realBaseDirWithSep)) {
+      return match;
+    }
 
     const mime = MIME_BY_EXT[path.extname(resolved).toLowerCase()] ?? "application/octet-stream";
     const data = fs.readFileSync(resolved).toString("base64");
