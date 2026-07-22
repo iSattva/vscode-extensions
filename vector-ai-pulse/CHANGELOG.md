@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4
+
+- Fix: a Claude Code subagent's own usage records were labeled with the workspace name `subagents` instead of the real project.
+
 ## 0.0.3
 
 Session cards now show a per-model breakdown instead of a single last-seen model: a mid-session model switch (e.g. Opus to Sonnet) is tracked per model, with the current model pinned to the top of an in/out-tokens/cache/cost table and a total row when a session spans more than one model. Card header now shows the project name, a short session ID, and a tool badge (Claude Code / Cline / Codex). Past-session rows show a per-model cost-share pill on expand instead of the full table, keeping the top-sessions list scannable.

@@ -18,12 +18,28 @@ export function findSessionFiles(): string[] {
   return out;
 }
 
+// A subagent's own transcript lives at
+// <workspace-dir>/<parentSessionId>/subagents/agent-*.jsonl, one level
+// deeper than a normal top-level session file (<workspace-dir>/<sessionId>.jsonl),
+// and its records carry the *parent's* sessionId - so its usage already
+// merges into the parent's session card via aggregateSessions grouping by
+// sessionId. Without this, the naive "immediate parent directory" workspace
+// derivation would read the literal "subagents" folder name as the project
+// name for those records instead of the real one two levels up.
+function deriveWorkspace(filePath: string): string {
+  const parentDir = path.dirname(filePath);
+  if (path.basename(parentDir) === "subagents") {
+    return path.basename(path.dirname(path.dirname(parentDir)));
+  }
+  return path.basename(parentDir);
+}
+
 // Returns the count of new usage records found; mutates `store` in place
 // but does not save it - callers batch one save() per pass (historical
 // scan or a single watcher event) to keep disk churn low during streaming.
 export function processFile(store: Store, pricingConfig: Record<string, ModelRate>, filePath: string): number {
   const { lines } = readNewLines(store.fileOffsets, filePath);
-  const workspace = path.basename(path.dirname(filePath));
+  const workspace = deriveWorkspace(filePath);
   const sessionIdFromFile = path.basename(filePath, ".jsonl");
   let found = 0;
 
