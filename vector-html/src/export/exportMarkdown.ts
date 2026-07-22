@@ -26,7 +26,7 @@ export async function exportMarkdown(document: vscode.TextDocument): Promise<Mar
   const outPath = resolveOutputPath(document, "md");
 
   if (preferPandoc && (await isPandocAvailable())) {
-    await runPandoc(document.fileName, outPath);
+    await runPandoc(sanitizeRenderedHtml(document.getText()), outPath);
     return { path: outPath, engine: "pandoc" };
   }
 
@@ -34,14 +34,21 @@ export async function exportMarkdown(document: vscode.TextDocument): Promise<Mar
   return { path: outPath, engine: "js-fallback" };
 }
 
-function runPandoc(sourcePath: string, outPath: string): Promise<void> {
+function runPandoc(sanitizedHtml: string, outPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // No shell: true - sourcePath/outPath come from the open document's
-    // filename and export folder setting, and Node does not safely escape
-    // array arguments against cmd.exe when shell: true is used on Windows,
-    // which would let a crafted filename inject arbitrary commands. Plain
-    // argv spawning passes args directly to the process with no shell parsing.
-    const proc = spawn("pandoc", [sourcePath, "-f", "html", "-t", "gfm", "-o", outPath]);
+    // No shell: true - outPath comes from the export folder setting, and
+    // Node does not safely escape array arguments against cmd.exe when
+    // shell: true is used on Windows, which would let a crafted filename
+    // inject arbitrary commands. Plain argv spawning passes args directly to
+    // the process with no shell parsing.
+    //
+    // Input is piped over stdin (no source file argument) rather than
+    // pointing Pandoc at the document's own file: Pandoc's gfm writer
+    // preserves raw HTML blocks verbatim, so handing it the unsanitized
+    // on-disk file would let a malicious <script>/event-handler survive
+    // straight into the exported .md untouched - the same sanitizer that
+    // protects the preview and PDF export paths must run here too.
+    const proc = spawn("pandoc", ["-f", "html", "-t", "gfm", "-o", outPath]);
 
     let stderr = "";
     proc.stderr?.on("data", (chunk) => {
@@ -56,6 +63,9 @@ function runPandoc(sourcePath: string, outPath: string): Promise<void> {
         reject(new Error(`Pandoc exited with code ${code}: ${stderr.trim()}`));
       }
     });
+
+    proc.stdin.write(sanitizedHtml);
+    proc.stdin.end();
   });
 }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.5
+
+- Fix: exporting to Markdown via Pandoc bypassed the HTML sanitizer, so a malicious HTML file's `<script>`/unsafe markup could survive unsanitized into the exported `.md`.
+
 ## 0.0.4
 
 - Fix: sanitized preview stripped `class` from `<body>`/`<html>`, so the
