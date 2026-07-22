@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Fix: custom theme CSS (`vector.markdown.customThemePath`) was embedded unescaped into exported/rendered HTML, letting a crafted stylesheet break out of its `<style>` tag and inject live script.
+
 ## 0.1.2
 
 - Fix: `.vscodeignore` excluded `node_modules` from the packaged extension,

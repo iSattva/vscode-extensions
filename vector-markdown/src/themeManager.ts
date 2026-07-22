@@ -48,7 +48,7 @@ export class ThemeManager {
       if (!fs.existsSync(resolved)) {
         throw new Error(`Custom theme CSS file not found: ${resolved}`);
       }
-      return { name: "custom", css: fs.readFileSync(resolved, "utf8") };
+      return { name: "custom", css: sanitizeCustomThemeCss(fs.readFileSync(resolved, "utf8")) };
     }
 
     const builtIn: BuiltInTheme = isBuiltIn(themeName) ? themeName : "default";
@@ -123,6 +123,20 @@ export class ThemeManager {
 
     return `:root {\n${declarations.join("\n")}\n}`;
   }
+}
+
+/**
+ * renderer.ts embeds theme.css raw inside a <style> tag with no HTML
+ * sanitization (unlike the Markdown body) - a custom theme is a
+ * user/workspace-supplied file, so it must be treated as untrusted the same
+ * way. The HTML parser's raw-text mode for <style> only ever looks for a
+ * literal, case-insensitive "</style" sequence to end the element early;
+ * every other "<...>" inside it stays inert text. No legitimate stylesheet
+ * needs that literal sequence, so any occurrence is stripped outright
+ * rather than escaped, closing off the only way out of the tag.
+ */
+function sanitizeCustomThemeCss(css: string): string {
+  return css.replace(/<\/style/gi, "");
 }
 
 /**
